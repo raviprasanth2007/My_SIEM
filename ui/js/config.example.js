@@ -9,3 +9,4 @@
 // ==============================================================================
 
 window.MAPBOX_TOKEN = window.MAPBOX_TOKEN || "pk.your_restricted_mapbox_public_token_here";
+
