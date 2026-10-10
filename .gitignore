@@ -1,0 +1,28 @@
+# Environments and secrets
+.env
+.env.*
+!.env.example
+
+# Local frontend configuration
+ui/js/config.js
+ui/config.js
+
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+
+# Logs and runtime artifacts
+*.log
+*.out
+nohup.out
+agent/nohup.out
+
+# Operating system artifacts
+.DS_Store
+Thumbs.db

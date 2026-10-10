@@ -1,0 +1,996 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>MY SIEM — Threat Detections</title>
+
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+
+    <style>
+        /* =====================================================
+           ALERTS PAGE — CLEAN SOC DASHBOARD
+           ===================================================== */
+
+        .main-content {
+            min-width: 0;
+        }
+
+        .main-header h2 span {
+            color: var(--text-muted);
+            font-size: .72em;
+            font-weight: 400;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        #liveBadge {
+            cursor: pointer;
+        }
+
+        #liveBadge.api-error {
+            color: var(--red);
+            border-color: rgba(255, 70, 90, .35);
+        }
+
+        #liveDot.offline {
+            background: var(--red);
+        }
+
+        /* STAT CARDS */
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 14px;
+            margin-bottom: 22px;
+        }
+
+        .stat-card {
+            min-width: 0;
+            cursor: pointer;
+            transition: transform .18s, border-color .18s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            border-color: var(--border-color);
+        }
+
+        .stat-card:focus-visible {
+            outline: 2px solid var(--green);
+            outline-offset: 3px;
+        }
+
+        .stat-value {
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* TABLE CONTAINER */
+
+        .table-container {
+            width: 100%;
+            min-width: 0;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            background: var(--bg-card);
+        }
+
+        .filter-bar {
+            display: grid;
+            grid-template-columns: minmax(180px, 1fr)
+                                   repeat(3, minmax(110px, 145px))
+                                   auto auto auto;
+            align-items: center;
+            gap: 9px;
+            padding: 14px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .filter-bar input,
+        .filter-bar select {
+            box-sizing: border-box;
+            width: 100%;
+            min-width: 0;
+            height: 38px;
+            padding: 0 11px;
+            border: 1px solid var(--border-color);
+            border-radius: 7px;
+            outline: none;
+            color: var(--text-primary);
+            background: var(--bg-secondary);
+            font-family: inherit;
+            font-size: .77rem;
+        }
+
+        .filter-bar input:focus,
+        .filter-bar select:focus {
+            border-color: var(--green);
+        }
+
+        .filter-bar input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .filter-btn {
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            gap: 7px;
+            min-height: 36px;
+            padding: 0 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 7px;
+            color: var(--text-primary);
+            background: var(--bg-secondary);
+            cursor: pointer;
+            font-family: inherit;
+            font-size: .76rem;
+            font-weight: 600;
+            white-space: nowrap;
+            transition: border-color .15s, background .15s;
+        }
+
+        .filter-btn:hover {
+            border-color: var(--green);
+        }
+
+        .filter-btn.export {
+            color: #fff;
+            background: #087f68;
+            border-color: #087f68;
+        }
+
+        .filter-btn.export:hover {
+            background: #069678;
+        }
+
+        .filter-btn.json-export {
+            background: #7c3aed;
+            border-color: #7c3aed;
+        }
+
+        .filter-btn.json-export:hover {
+            background: #8b5cf6;
+        }
+
+        /* TABLE LAYOUT */
+
+        .table-scroll {
+            width: 100%;
+            overflow: auto;
+        }
+
+        .table-scroll table {
+            width: 100%;
+            min-width: 1050px;
+            border-collapse: separate;
+            border-spacing: 0;
+            table-layout: fixed;
+        }
+
+        .table-scroll thead th {
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            padding: 13px 12px;
+            text-align: left;
+            color: var(--text-muted);
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            font-size: .64rem;
+            font-weight: 700;
+            letter-spacing: .07em;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+
+        .table-scroll tbody td {
+            padding: 15px 12px;
+            vertical-align: middle;
+            color: var(--text-primary);
+            border-bottom: 1px solid var(--border-color);
+            font-size: .76rem;
+        }
+
+        .table-scroll tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .alert-row {
+            background: var(--bg-card);
+            transition: background .15s;
+        }
+
+        .alert-row:hover {
+            background: var(--bg-secondary);
+        }
+
+        /* Column widths: always match the eight table cells */
+
+        .table-scroll th:nth-child(1),
+        .table-scroll td:nth-child(1) {
+            width: 125px;
+        }
+
+        .table-scroll th:nth-child(2),
+        .table-scroll td:nth-child(2) {
+            width: 31%;
+        }
+
+        .table-scroll th:nth-child(3),
+        .table-scroll td:nth-child(3) {
+            width: 115px;
+        }
+
+        .table-scroll th:nth-child(4),
+        .table-scroll td:nth-child(4) {
+            width: 140px;
+        }
+
+        .table-scroll th:nth-child(5),
+        .table-scroll td:nth-child(5) {
+            width: 145px;
+        }
+
+        .table-scroll th:nth-child(6),
+        .table-scroll td:nth-child(6) {
+            width: 125px;
+        }
+
+        .table-scroll th:nth-child(7),
+        .table-scroll td:nth-child(7) {
+            width: 125px;
+        }
+
+        .alert-id-cell {
+            display: table-cell;
+            white-space: nowrap;
+        }
+
+        .mono,
+        .ip-address {
+            font-family: 'JetBrains Mono', 'Consolas', monospace;
+            font-size: .72rem;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .mono {
+            color: var(--text-primary);
+        }
+
+        .ip-address {
+            display: inline-block;
+            padding: 5px 7px;
+            border-radius: 5px;
+            background: var(--bg-secondary);
+            overflow-wrap: anywhere;
+        }
+
+        .expand-btn {
+            width: 25px;
+            height: 25px;
+            margin-right: 7px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: transform .18s, color .18s;
+        }
+
+        .expand-btn:hover {
+            color: var(--green);
+            border-color: var(--green);
+        }
+
+        .expand-btn.expanded i {
+            transform: rotate(90deg);
+        }
+
+        .expand-btn i {
+            transition: transform .18s;
+        }
+
+        /* DETECTION DESCRIPTION */
+
+        .detection-title {
+            color: var(--text-primary);
+            font-weight: 650;
+            font-size: .8rem;
+            line-height: 1.45;
+            overflow-wrap: anywhere;
+        }
+
+        .detection-description {
+            margin-top: 5px;
+            color: var(--text-muted);
+            font-size: .73rem;
+            line-height: 1.5;
+            overflow-wrap: anywhere;
+        }
+
+        .detection-rule {
+            margin-top: 5px;
+            color: var(--blue);
+            font-size: .67rem;
+            font-family: 'JetBrains Mono', 'Consolas', monospace;
+        }
+
+        .agent-name {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            font-weight: 600;
+            overflow-wrap: anywhere;
+        }
+
+        .agent-name i {
+            color: var(--text-muted);
+            font-size: .78rem;
+        }
+
+        .muted {
+            color: var(--text-muted);
+            font-size: .72rem;
+        }
+
+        /* SEVERITY BADGES */
+
+        .severity-badge,
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 6px 9px;
+            border-radius: 6px;
+            font-size: .65rem;
+            font-weight: 750;
+            letter-spacing: .025em;
+            white-space: nowrap;
+        }
+
+        .severity-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        .severity-critical {
+            color: #ff5364;
+            background: rgba(255, 65, 85, .12);
+        }
+
+        .severity-high {
+            color: #ff9f43;
+            background: rgba(255, 159, 67, .12);
+        }
+
+        .severity-medium {
+            color: #e7bf3d;
+            background: rgba(231, 191, 61, .12);
+        }
+
+        .severity-low {
+            color: #26c995;
+            background: rgba(38, 201, 149, .12);
+        }
+
+        .severity-info {
+            color: #60a5fa;
+            background: rgba(96, 165, 250, .12);
+        }
+
+        /* TRIAGE STATUS BADGES */
+
+        .status-open {
+            color: #ff9f43;
+            background: rgba(255, 159, 67, .12);
+        }
+
+        .status-investigating {
+            color: #60a5fa;
+            background: rgba(96, 165, 250, .12);
+        }
+
+        .status-resolved,
+        .status-closed {
+            color: #26c995;
+            background: rgba(38, 201, 149, .12);
+        }
+
+        .status-false-positive {
+            color: #b5a1ff;
+            background: rgba(167, 139, 250, .13);
+        }
+
+        .detected-time {
+            font-weight: 600;
+            font-size: .74rem;
+            white-space: nowrap;
+        }
+
+        .time-ago {
+            margin-top: 4px;
+            color: var(--text-muted);
+            font-size: .65rem;
+        }
+
+        /* EXPANDED DETAILS */
+
+        .alert-detail-row > td {
+            padding: 0 !important;
+            background: var(--bg-secondary);
+        }
+
+        .alert-detail-panel {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .detail-heading {
+            margin-bottom: 15px;
+            font-weight: 700;
+            font-size: .85rem;
+        }
+
+        .detail-heading i {
+            margin-right: 7px;
+            color: var(--green);
+        }
+
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .detail-item {
+            min-width: 0;
+            padding: 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: var(--bg-card);
+        }
+
+        .detail-item span {
+            display: block;
+            margin-bottom: 6px;
+            color: var(--text-muted);
+            font-size: .66rem;
+            text-transform: uppercase;
+            letter-spacing: .05em;
+        }
+
+        .detail-item strong {
+            display: block;
+            font-size: .78rem;
+            overflow-wrap: anywhere;
+        }
+
+        .raw-heading {
+            margin: 17px 0 8px;
+            color: var(--text-muted);
+            font-size: .68rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .06em;
+        }
+
+        .raw-alert {
+            max-height: 280px;
+            overflow: auto;
+            padding: 14px;
+            margin: 0;
+            color: var(--text-primary);
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: .72rem;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+        }
+
+        /* EMPTY / LOADING / ERROR */
+
+        .loading-cell {
+            padding: 45px 20px !important;
+            text-align: center;
+            color: var(--text-muted) !important;
+        }
+
+        .loading-cell i {
+            margin-right: 8px;
+            color: var(--green);
+        }
+
+        .alert-empty-state {
+            padding: 40px 20px;
+            text-align: center;
+        }
+
+        .alert-empty-state > i {
+            color: var(--text-muted);
+            font-size: 1.8rem;
+            margin-bottom: 12px;
+        }
+
+        .alert-empty-state h3 {
+            margin: 8px 0;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+
+        .alert-empty-state p {
+            margin: 8px 0 14px;
+            color: var(--text-muted);
+            font-size: .8rem;
+            overflow-wrap: anywhere;
+        }
+
+        .alert-empty-state .api-hint {
+            font-family: 'JetBrains Mono', 'Consolas', monospace;
+            font-size: .68rem;
+        }
+
+        /* PAGINATION */
+
+        .pagination {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            padding: 13px 16px;
+            color: var(--text-muted);
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-color);
+            font-size: .72rem;
+        }
+
+        .page-btns {
+            display: flex;
+            gap: 8px;
+        }
+
+        .page-btns button {
+            min-height: 32px;
+            padding: 0 12px;
+            color: var(--text-primary);
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 7px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: .72rem;
+        }
+
+        .page-btns button:hover:not(:disabled) {
+            border-color: var(--green);
+        }
+
+        .page-btns button:disabled {
+            opacity: .4;
+            cursor: not-allowed;
+        }
+
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 15px;
+            font-size: .68rem;
+        }
+
+        #statusBarLeft {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+        }
+
+        #statusBarLeft .fa-circle-check {
+            color: var(--green);
+        }
+
+        #statusBarLeft .fa-triangle-exclamation {
+            color: var(--red);
+        }
+
+        /* RESPONSIVE */
+
+        @media (max-width: 1350px) {
+            .stats-grid {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+
+            .filter-bar {
+                grid-template-columns: minmax(180px, 1fr) repeat(3, minmax(110px, 1fr));
+            }
+
+            .filter-bar .filter-btn {
+                width: 100%;
+            }
+        }
+
+        @media (max-width: 850px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .filter-bar {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .filter-bar input {
+                grid-column: 1 / -1;
+            }
+
+            .detail-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .main-header {
+                align-items: flex-start;
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+
+        @media (max-width: 520px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .filter-bar {
+                grid-template-columns: 1fr;
+            }
+
+            .filter-bar input {
+                grid-column: auto;
+            }
+
+            .detail-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .pagination {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- SIDEBAR -->
+    <nav class="sidebar">
+        <div class="sidebar-logo">
+            <i class="fas fa-shield-halved logo-icon"></i>
+            <div>
+                <h1>MY <span>SIEM</span></h1>
+                <span class="subtitle">Security Operations</span>
+            </div>
+        </div>
+
+        <div class="sidebar-nav">
+            <div class="nav-label">Command Center</div>
+
+            <a href="index.html">
+                <i class="fas fa-th-large"></i>
+                <span>Dashboard</span>
+            </a>
+
+            <a href="alerts.html" class="active">
+                <i class="fas fa-bell"></i>
+                <span>Alerts</span>
+                <span class="badge-side" id="alertBadge">0</span>
+            </a>
+
+            <a href="logs.html">
+                <i class="fas fa-file-alt"></i>
+                <span>Log Stream</span>
+            </a>
+
+            <a href="devices.html">
+                <i class="fas fa-server"></i>
+                <span>Endpoints</span>
+            </a>
+
+            <a href="incidents.html">
+                <i class="fas fa-shield-alt"></i>
+                <span>Incidents</span>
+            </a>
+
+            <div class="nav-label">Intelligence</div>
+
+            <a href="map.html">
+                <i class="fas fa-globe-americas"></i>
+                <span>World Map</span>
+            </a>
+
+            <a href="threat-intel.html">
+                <i class="fas fa-chart-line"></i>
+                <span>Threat Intel</span>
+            </a>
+
+            <div class="nav-label">Administration</div>
+
+            <a href="reports.html">
+                <i class="fas fa-file-pdf"></i>
+                <span>Reports</span>
+            </a>
+
+            <a href="settings.html">
+                <i class="fas fa-cog"></i>
+                <span>Settings</span>
+            </a>
+
+            <a href="users.html">
+                <i class="fas fa-users"></i>
+                <span>Users</span>
+            </a>
+        </div>
+
+        <div class="sidebar-footer">
+            <div class="user">
+                <div class="user-avatar">A</div>
+                <div class="user-info">
+                    <div class="name">SOC Administrator</div>
+                    <div class="role">SecOps Lead · Level 3</div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- MAIN -->
+    <main class="main-content">
+
+        <header class="main-header">
+            <div>
+                <h2>
+                    Threat Detections
+                    <span>· Security Alerts &amp; Breach Indicators</span>
+                </h2>
+            </div>
+
+            <div class="header-actions">
+                <div class="live-badge" id="liveBadge"
+                     onclick="toggleLive()"
+                     title="Click to pause or resume auto-refresh">
+                    <span class="live-dot-sm" id="liveDot"></span>
+                    <span id="liveLabel">LIVE</span>
+                </div>
+
+                <button class="header-btn" type="button"
+                        onclick="document.dispatchEvent(new KeyboardEvent('keydown',{key:'k',ctrlKey:true}))"
+                        title="Search (Ctrl+K)">
+                    <i class="fas fa-search"></i>
+                    <span>Ctrl+K</span>
+                </button>
+
+                <button class="theme-toggle" type="button"
+                        onclick="toggleTheme()" id="themeToggle">
+                    <i class="fas fa-moon"></i>
+                    <span class="theme-label" id="themeLabel">Dark</span>
+                </button>
+
+                <button class="btn-refresh" type="button"
+                        onclick="loadAlerts()" title="Refresh alerts">
+                    <i class="fas fa-sync-alt" id="refreshIcon"></i>
+                </button>
+
+                <span id="lastUpdate"
+                      style="color:var(--text-muted);font-size:.65rem">
+                    Waiting for data
+                </span>
+            </div>
+        </header>
+
+        <!-- STATISTICS -->
+        <section class="stats-grid">
+
+            <div class="stat-card" role="button" tabindex="0"
+                 onclick="filterBySeverity('ALL')"
+                 onkeydown="if(event.key==='Enter')filterBySeverity('ALL')">
+                <div class="stat-header">
+                    <span class="stat-label">Total Detections</span>
+                    <i class="fas fa-shield-virus stat-icon text-blue"></i>
+                </div>
+                <div class="stat-value text-blue" id="alertTotal">0</div>
+                <div class="stat-footer">
+                    <span class="stat-change up">All records</span>
+                    <span class="stat-delta">View all</span>
+                </div>
+            </div>
+
+            <div class="stat-card critical" role="button" tabindex="0"
+                 onclick="filterBySeverity('CRITICAL')"
+                 onkeydown="if(event.key==='Enter')filterBySeverity('CRITICAL')">
+                <div class="stat-header">
+                    <span class="stat-label">Critical</span>
+                    <i class="fas fa-skull-crossbones stat-icon text-red"></i>
+                </div>
+                <div class="stat-value text-red" id="alertCritical">0</div>
+                <div class="stat-footer">
+                    <span class="stat-change down">
+                        <i class="fas fa-triangle-exclamation"></i> Immediate action
+                    </span>
+                    <span class="stat-delta">Filter critical</span>
+                </div>
+            </div>
+
+            <div class="stat-card" role="button" tabindex="0"
+                 onclick="filterBySeverity('HIGH')"
+                 onkeydown="if(event.key==='Enter')filterBySeverity('HIGH')">
+                <div class="stat-header">
+                    <span class="stat-label">High Severity</span>
+                    <i class="fas fa-exclamation-triangle stat-icon text-orange"></i>
+                </div>
+                <div class="stat-value text-orange" id="alertHigh">0</div>
+                <div class="stat-footer">
+                    <span class="stat-change warning">Action required</span>
+                    <span class="stat-delta">Filter high</span>
+                </div>
+            </div>
+
+            <div class="stat-card" role="button" tabindex="0"
+                 onclick="filterBySeverity('MEDIUM')"
+                 onkeydown="if(event.key==='Enter')filterBySeverity('MEDIUM')">
+                <div class="stat-header">
+                    <span class="stat-label">Medium Severity</span>
+                    <i class="fas fa-triangle-exclamation stat-icon text-yellow"></i>
+                </div>
+                <div class="stat-value text-yellow" id="alertMedium">0</div>
+                <div class="stat-footer">
+                    <span class="stat-change neutral">Under watch</span>
+                    <span class="stat-delta">Filter medium</span>
+                </div>
+            </div>
+
+            <div class="stat-card" role="button" tabindex="0"
+                 onclick="filterBySeverity('LOW')"
+                 onkeydown="if(event.key==='Enter')filterBySeverity('LOW')">
+                <div class="stat-header">
+                    <span class="stat-label">Low / Info</span>
+                    <i class="fas fa-circle-info stat-icon text-green"></i>
+                </div>
+                <div class="stat-value text-green" id="alertLow">0</div>
+                <div class="stat-footer">
+                    <span class="stat-change up">Informational</span>
+                    <span class="stat-delta">Filter low</span>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- ALERT TABLE -->
+        <section class="table-container">
+
+            <div class="filter-bar">
+                <input type="search" id="searchInput"
+                       placeholder="Search ID, IP, host, rule, detection..."
+                       aria-label="Search alerts"
+                       oninput="applyFilters()">
+
+                <select id="severityFilter" aria-label="Filter severity"
+                        onchange="applyFilters()">
+                    <option value="ALL">All Severities</option>
+                    <option value="CRITICAL">Critical</option>
+                    <option value="HIGH">High</option>
+                    <option value="MEDIUM">Medium</option>
+                    <option value="LOW">Low</option>
+                    <option value="INFO">Info</option>
+                </select>
+
+                <select id="statusFilter" aria-label="Filter triage status"
+                        onchange="applyFilters()">
+                    <option value="ALL">All Status</option>
+                    <option value="OPEN">Open</option>
+                    <option value="INVESTIGATING">Investigating</option>
+                    <option value="RESOLVED">Resolved</option>
+                    <option value="CLOSED">Closed</option>
+                    <option value="FALSE_POSITIVE">False Positive</option>
+                </select>
+
+                <select id="agentFilter" aria-label="Filter agent"
+                        onchange="applyFilters()">
+                    <option value="ALL">All Agents</option>
+                </select>
+
+                <button class="filter-btn" type="button" onclick="resetFilters()">
+                    <i class="fas fa-times"></i> Clear
+                </button>
+
+                <button class="filter-btn export" type="button"
+                        onclick="exportAlertsCSV()">
+                    <i class="fas fa-file-csv"></i> CSV
+                </button>
+
+                <button class="filter-btn export json-export" type="button"
+                        onclick="exportAlertsJSON()">
+                    <i class="fas fa-code"></i> JSON
+                </button>
+            </div>
+
+            <div class="table-scroll">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Alert ID</th>
+                            <th>Detection Type &amp; Summary</th>
+                            <th>Severity</th>
+                            <th>Asset / Agent</th>
+                            <th>Source Address</th>
+                            <th>Triage State</th>
+                            <th>Detected</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="alertsBody">
+                        <tr>
+                            <td colspan="8" class="loading-cell">
+                                <i class="fas fa-circle-notch fa-spin"></i>
+                                Loading alerts...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="pagination">
+                <span id="pageInfo">Showing 0 alerts · Page 1 of 1</span>
+
+                <div class="page-btns">
+                    <button type="button" id="prevPage"
+                            onclick="changePage(-1)" disabled>
+                        <i class="fas fa-chevron-left"></i> Prev
+                    </button>
+
+                    <button type="button" id="nextPage"
+                            onclick="changePage(1)" disabled>
+                        Next <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- API STATUS -->
+        <footer class="status-bar">
+            <span id="statusBarLeft">
+                <i class="fas fa-circle-notch fa-spin"></i>
+                Checking alerts API...
+            </span>
+            <span id="statusBarRight">Waiting for first scan</span>
+        </footer>
+
+    </main>
+
+    <!-- API CONFIGURATION -->
+    <script>
+        window.SIEM_API_BASE = 'http://100.90.174.77:5000';
+    </script>
+
+    <!-- SHARED SCRIPTS -->
+    <script src="js/theme.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/alerts.js"></script>
+
+</body>
+</html>

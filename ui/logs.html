@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🛡️ MY SIEM — Real-Time Log Stream</title>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Master SOC Design System -->
+    <link rel="stylesheet" href="css/style.css">
+
+    <style>
+        .expand-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 4px;
+            font-size: 0.75rem;
+            transition: var(--transition);
+        }
+        .expand-btn:hover {
+            color: var(--green);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ═══════════════════ SIDEBAR ═══════════════════ -->
+    <nav class="sidebar">
+        <div class="sidebar-logo">
+            <i class="fas fa-shield-halved logo-icon"></i>
+            <div>
+                <h1>MY <span>SIEM</span></h1>
+                <span class="subtitle">Security Operations</span>
+            </div>
+        </div>
+
+        <div class="sidebar-nav">
+            <div class="nav-label">Command Center</div>
+            <a href="index.html"><i class="fas fa-th-large"></i> <span>Dashboard</span></a>
+            <a href="alerts.html"><i class="fas fa-bell"></i> <span>Alerts</span> <span class="badge-side" id="alertBadge">0</span></a>
+            <a href="logs.html" class="active"><i class="fas fa-file-alt"></i> <span>Log Stream</span></a>
+            <a href="devices.html"><i class="fas fa-server"></i> <span>Endpoints</span></a>
+            <a href="incidents.html"><i class="fas fa-shield-alt"></i> <span>Incidents</span></a>
+
+            <div class="nav-label">Intelligence</div>
+            <a href="map.html"><i class="fas fa-globe-americas"></i> <span>World Map</span></a>
+            <a href="threat-intel.html"><i class="fas fa-chart-line"></i> <span>Threat Intel</span></a>
+
+            <div class="nav-label">Administration</div>
+            <a href="reports.html"><i class="fas fa-file-pdf"></i> <span>Reports</span></a>
+            <a href="settings.html"><i class="fas fa-cog"></i> <span>Settings</span></a>
+            <a href="users.html"><i class="fas fa-users"></i> <span>Users</span></a>
+        </div>
+
+        <div class="sidebar-footer">
+            <div class="user">
+                <div class="user-avatar">A</div>
+                <div class="user-info">
+                    <div class="name">SOC Administrator</div>
+                    <div class="role">SecOps Lead · Level 3</div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ═══════════════════ MAIN CONTENT ═══════════════════ -->
+    <main class="main-content">
+
+        <header class="main-header">
+            <div>
+                <h2>Log Ingestion Stream <span>· Real-time Host & Security Telemetry</span></h2>
+            </div>
+            
+            <div class="header-actions">
+                <div class="live-badge" id="liveBadge" onclick="toggleLiveLogs()" title="Toggle live auto-tail">
+                    <span class="live-dot-sm" id="liveDot"></span>
+                    <span id="liveLabel">LIVE</span>
+                </div>
+
+                <button class="header-btn" id="viewModeBtn" onclick="toggleViewMode()" title="Toggle View Mode">
+                    <i class="fas fa-terminal"></i> <span>Terminal View</span>
+                </button>
+
+                <button class="header-btn" onclick="document.dispatchEvent(new KeyboardEvent('keydown', {key:'k', ctrlKey:true}))" title="Search (Ctrl+K)">
+                    <i class="fas fa-search"></i> <span>Ctrl+K</span>
+                </button>
+
+                <button class="theme-toggle" onclick="toggleTheme()" id="themeToggle">
+                    <i class="fas fa-moon"></i>
+                    <span class="theme-label" id="themeLabel">Dark</span>
+                </button>
+
+                <button class="btn-refresh" onclick="loadLogs()" title="Refresh Logs">
+                    <i class="fas fa-sync-alt" id="refreshIcon"></i>
+                </button>
+
+                <span style="color:var(--text-muted);font-size:.65rem;font-family:'JetBrains Mono',monospace;" id="lastUpdate">--:--:--</span>
+            </div>
+        </header>
+
+        <!-- KPI Stats -->
+        <div class="stats-grid">
+            <div class="stat-card" onclick="filterByLevel('ALL')">
+                <div class="stat-header">
+                    <span class="stat-label">Total Ingestion</span>
+                    <i class="fas fa-list-check stat-icon text-blue"></i>
+                </div>
+                <div class="stat-value text-blue" id="logTotal">0</div>
+                <div class="stat-footer">
+                    <span class="stat-change up">All records</span>
+                    <span class="stat-delta">Buffer</span>
+                </div>
+            </div>
+
+            <div class="stat-card critical" onclick="filterByLevel('ERROR')">
+                <div class="stat-header">
+                    <span class="stat-label">Errors & Fails</span>
+                    <i class="fas fa-circle-exclamation stat-icon text-red"></i>
+                </div>
+                <div class="stat-value text-red" id="logError">0</div>
+                <div class="stat-footer">
+                    <span class="stat-change down"><i class="fas fa-triangle-exclamation"></i> Critical errors</span>
+                    <span class="stat-delta">Filter Errors</span>
+                </div>
+            </div>
+
+            <div class="stat-card" onclick="filterByLevel('WARN')">
+                <div class="stat-header">
+                    <span class="stat-label">Warnings</span>
+                    <i class="fas fa-triangle-exclamation stat-icon text-orange"></i>
+                </div>
+                <div class="stat-value text-orange" id="logWarn">0</div>
+                <div class="stat-footer">
+                    <span class="stat-change warning">Heuristic alerts</span>
+                    <span class="stat-delta">Filter Warn</span>
+                </div>
+            </div>
+
+            <div class="stat-card" onclick="filterByLevel('INFO')">
+                <div class="stat-header">
+                    <span class="stat-label">Informational</span>
+                    <i class="fas fa-circle-info stat-icon text-green"></i>
+                </div>
+                <div class="stat-value text-green" id="logInfo">0</div>
+                <div class="stat-footer">
+                    <span class="stat-change up">Normal operations</span>
+                    <span class="stat-delta">Filter Info</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filter Bar -->
+        <div class="filter-bar" style="border-radius: var(--radius) var(--radius) 0 0; border: 1px solid var(--border-color); border-bottom: none;">
+            <input type="text" id="searchInput" placeholder="🔍 Search logs by message, IP, agent, PID, syscall..." oninput="applyLogFilters()">
+            
+            <select id="levelFilter" onchange="applyLogFilters()">
+                <option value="ALL">All Levels</option>
+                <option value="ERROR">Errors & Failures</option>
+                <option value="WARN">Warnings</option>
+                <option value="INFO">Informational</option>
+            </select>
+
+            <select id="sourceFilter" onchange="applyLogFilters()">
+                <option value="ALL">All Log Sources</option>
+            </select>
+
+            <button class="filter-btn clear" onclick="resetLogFilters()"><i class="fas fa-times"></i> Clear</button>
+            <button class="filter-btn export" onclick="exportLogs()"><i class="fas fa-download"></i> Export Logs</button>
+        </div>
+
+        <!-- Standard Table View -->
+        <div class="table-container" id="tableContainer" style="border-radius: 0 0 var(--radius) var(--radius);">
+            <div class="table-scroll">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width:140px;">Timestamp</th>
+                            <th style="width:110px;">Endpoint</th>
+                            <th style="width:110px;">Source</th>
+                            <th style="width:90px;">Level</th>
+                            <th>Raw Log Message Payload</th>
+                            <th style="width:40px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="logsBody">
+                        <tr><td colspan="6" class="loading-text"><i class="fas fa-spinner fa-spin text-green"></i> Ingesting logs...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="pagination">
+                <span id="pageInfo">Showing 0 logs</span>
+                <div class="page-btns">
+                    <button id="prevPage" onclick="changePage(-1)">◀ Prev</button>
+                    <button id="nextPage" onclick="changePage(1)">Next ▶</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Terminal Live Tailing View (Hidden by default) -->
+        <div class="terminal-window" id="terminalContainer" style="display:none; border-radius: 0 0 var(--radius) var(--radius);">
+            <div class="terminal-header">
+                <div class="terminal-controls">
+                    <span class="terminal-dot red"></span>
+                    <span class="terminal-dot yellow"></span>
+                    <span class="terminal-dot green"></span>
+                </div>
+                <div style="font-size:0.65rem;color:var(--text-muted);">
+                    SIEM LOG STREAM TERMINAL &nbsp;·&nbsp; <span style="color:var(--green)">TAILING ACTIVE</span>
+                </div>
+            </div>
+            <div class="terminal-body" id="terminalBody"></div>
+        </div>
+
+        <footer class="status-bar">
+            <span><i class="fas fa-check-circle" style="color:var(--green)"></i> Log Agent Stream: Connected · /var/log/syslog, auth.log, FIM</span>
+            <span id="statusBarRight">Last scan: --:--:--</span>
+        </footer>
+
+    </main>
+
+    <!-- Modal for Detailed Log Inspection -->
+    <div id="logModal" class="modal-overlay">
+        <div class="modal-container">
+            <div id="logModalContent"></div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+
+    <script>
+       window.SIEM_API_BASE = 'http://100.90.174.77:5000';
+   </script>
+
+    <script src="js/theme.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/logs.js"></script>
+
+</body>
+</html>

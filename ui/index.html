@@ -1,0 +1,476 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🛡️ MY SIEM — SOC Command Center</title>
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet"
+          href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
+    <!-- Master Cyber SOC Design System -->
+    <link rel="stylesheet" href="css/style.css">
+
+    <!-- Dashboard Map Styling -->
+    <style>
+        #worldMap {
+            width: 100%;
+            height: 380px;
+            background: #030814;
+            border-radius: var(--radius);
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+        }
+
+        .leaflet-container {
+            background: #030814 !important;
+            font-family: inherit;
+        }
+
+        /* Darken OpenStreetMap tiles for the SOC theme */
+        .leaflet-tile-pane {
+            filter: brightness(0.65) saturate(0.8) contrast(1.2);
+        }
+
+        .leaflet-control-attribution {
+            font-size: 10px !important;
+        }
+
+        .leaflet-popup-content-wrapper {
+            background: var(--bg-card) !important;
+            color: var(--text-primary) !important;
+            border: 1px solid var(--border-highlight) !important;
+            border-radius: var(--radius) !important;
+            box-shadow: var(--shadow-lg) !important;
+        }
+
+        .leaflet-popup-content {
+            margin: 12px !important;
+        }
+
+        .leaflet-popup-tip {
+            background: var(--bg-card) !important;
+        }
+
+        .dashboard-map-marker {
+            background: transparent !important;
+            border: none !important;
+        }
+
+        .leaflet-control-zoom a {
+            background: var(--bg-card) !important;
+            color: var(--text-primary) !important;
+            border-color: var(--border-color) !important;
+        }
+
+        .leaflet-control-zoom a:hover {
+            background: var(--bg-hover) !important;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- SIDEBAR -->
+    <nav class="sidebar">
+        <div class="sidebar-logo">
+            <i class="fas fa-shield-halved logo-icon"></i>
+            <div>
+                <h1>MY <span>SIEM</span></h1>
+                <span class="subtitle">Security Operations</span>
+            </div>
+        </div>
+
+        <div class="sidebar-nav">
+            <div class="nav-label">Command Center</div>
+
+            <a href="index.html" class="active">
+                <i class="fas fa-th-large"></i>
+                <span>Dashboard</span>
+            </a>
+
+            <a href="alerts.html">
+                <i class="fas fa-bell"></i>
+                <span>Alerts</span>
+                <span class="badge-side" id="alertBadge">0</span>
+            </a>
+
+            <a href="logs.html">
+                <i class="fas fa-file-alt"></i>
+                <span>Log Stream</span>
+            </a>
+
+            <a href="devices.html">
+                <i class="fas fa-server"></i>
+                <span>Endpoints</span>
+            </a>
+
+            <a href="incidents.html">
+                <i class="fas fa-shield-alt"></i>
+                <span>Incidents</span>
+            </a>
+
+            <div class="nav-label">Intelligence</div>
+
+            <a href="map.html">
+                <i class="fas fa-globe-americas"></i>
+                <span>World Map</span>
+            </a>
+
+            <a href="threat-intel.html">
+                <i class="fas fa-chart-line"></i>
+                <span>Threat Intel</span>
+            </a>
+
+            <div class="nav-label">Administration</div>
+
+            <a href="reports.html">
+                <i class="fas fa-file-pdf"></i>
+                <span>Reports</span>
+            </a>
+
+            <a href="settings.html">
+                <i class="fas fa-cog"></i>
+                <span>Settings</span>
+            </a>
+
+            <a href="users.html">
+                <i class="fas fa-users"></i>
+                <span>Users</span>
+            </a>
+        </div>
+
+        <div class="sidebar-footer">
+            <div class="user">
+                <div class="user-avatar">A</div>
+                <div class="user-info">
+                    <div class="name">SOC Administrator</div>
+                    <div class="role">SecOps Lead · Level 3</div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+
+        <!-- HEADER -->
+        <header class="main-header">
+            <div>
+                <h2>
+                    Dashboard
+                    <span>· Live SOC Telemetry</span>
+                </h2>
+            </div>
+
+            <div class="header-actions">
+
+                <div class="live-badge"
+                     id="liveBadge"
+                     onclick="toggleLive()"
+                     title="Click to pause/resume real-time polling">
+
+                    <span class="live-dot-sm" id="liveDot"></span>
+                    <span id="liveLabel">LIVE</span>
+                </div>
+
+                <button class="header-btn"
+                        onclick="document.dispatchEvent(new KeyboardEvent('keydown', {key:'k', ctrlKey:true}))"
+                        title="Command Palette (Ctrl+K)">
+                    <i class="fas fa-search"></i>
+                    <span>Ctrl+K</span>
+                </button>
+
+                <button class="header-btn"
+                        onclick="SiemEngine.toggleSound()"
+                        id="soundToggle"
+                        title="Toggle audio alert chime">
+                    <i class="fas fa-volume-up"></i>
+                </button>
+
+                <button class="theme-toggle"
+                        onclick="toggleTheme()"
+                        id="themeToggle"
+                        title="Switch Theme">
+                    <i class="fas fa-moon"></i>
+                    <span class="theme-label" id="themeLabel">Dark</span>
+                </button>
+
+                <button class="btn-refresh"
+                        onclick="loadDashboard()"
+                        title="Manual Refresh">
+                    <i class="fas fa-sync-alt" id="refreshIcon"></i>
+                </button>
+
+                <span style="color:var(--text-muted);
+                             font-size:0.65rem;
+                             font-family:'JetBrains Mono',monospace;"
+                      id="lastUpdate">--:--:--</span>
+            </div>
+        </header>
+
+        <!-- QUICK ACTION BAR -->
+        <div class="quick-action-bar">
+            <button class="action-btn" onclick="runFimScan()">
+                <i class="fas fa-fingerprint text-green"></i>
+                Rapid FIM Scan
+            </button>
+
+            <button class="action-btn" onclick="simulateAttack()">
+                <i class="fas fa-bolt text-red"></i>
+                Simulate Intrusion
+            </button>
+
+            <button class="action-btn" onclick="blockAttackerIP()">
+                <i class="fas fa-ban text-orange"></i>
+                Quarantined Top IP
+            </button>
+
+            <button class="action-btn" onclick="exportSocBrief()">
+                <i class="fas fa-file-export text-blue"></i>
+                Export SOC Brief
+            </button>
+        </div>
+
+        <!-- METRICS -->
+        <div class="stats-grid">
+
+            <div class="stat-card" onclick="location.href='logs.html'">
+                <div class="stat-header">
+                    <span class="stat-label">Total Ingestion</span>
+                    <i class="fas fa-file-code stat-icon"></i>
+                </div>
+
+                <div class="stat-value text-blue" id="totalLogs">0</div>
+
+                <div class="stat-footer">
+                    <span class="stat-change up">
+                        <i class="fas fa-arrow-up"></i>
+                        Real-time
+                    </span>
+                    <span class="stat-delta">~42 EPS</span>
+                </div>
+            </div>
+
+            <div class="stat-card" onclick="location.href='alerts.html'">
+                <div class="stat-header">
+                    <span class="stat-label">Total Detections</span>
+                    <i class="fas fa-bell stat-icon"></i>
+                </div>
+
+                <div class="stat-value text-orange" id="totalAlerts">0</div>
+
+                <div class="stat-footer">
+                    <span class="stat-change warning">
+                        <i class="fas fa-circle-exclamation"></i>
+                        Monitored
+                    </span>
+                    <span class="stat-delta">24h active</span>
+                </div>
+            </div>
+
+            <div class="stat-card critical"
+                 onclick="location.href='incidents.html'">
+
+                <div class="stat-header">
+                    <span class="stat-label">Critical Breaches</span>
+                    <i class="fas fa-skull-crossbones stat-icon"></i>
+                </div>
+
+                <div class="stat-value text-red" id="criticalAlerts">0</div>
+
+                <div class="stat-footer">
+                    <span class="stat-change down">
+                        <i class="fas fa-triangle-exclamation"></i>
+                        Immediate action
+                    </span>
+                    <span class="stat-delta">Priority triage</span>
+                </div>
+            </div>
+
+            <div class="stat-card" onclick="location.href='devices.html'">
+                <div class="stat-header">
+                    <span class="stat-label">Active Agents</span>
+                    <i class="fas fa-server stat-icon"></i>
+                </div>
+
+                <div class="stat-value text-green" id="activeAgents">0</div>
+
+                <div class="stat-footer">
+                    <span class="stat-change up">
+                        <i class="fas fa-check"></i>
+                        Connected
+                    </span>
+                    <span class="stat-delta" id="totalDevices">0 total</span>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-label">Defense Posture</span>
+                    <i class="fas fa-shield-halved stat-icon"></i>
+                </div>
+
+                <div class="stat-value text-green" id="defenseScore">—</div>
+
+                <div class="stat-footer">
+                    <span class="stat-change up" id="defenseStatus">
+                        No telemetry
+                    </span>
+                    <span class="stat-delta">Fleet Health</span>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- GLOBAL THREAT MAP AND ENDPOINTS -->
+        <div class="dashboard-grid">
+
+            <div class="panel"
+                 style="display:flex;flex-direction:column;margin-bottom:0;">
+
+                <div class="panel-header">
+                    <h3>
+                        <i class="fas fa-globe-americas"></i>
+                        Global Attack Vectors & Infrastructure
+                    </h3>
+
+                    <div style="display:flex;
+                                gap:12px;
+                                font-size:0.65rem;
+                                color:var(--text-muted);
+                                align-items:center;">
+
+                        <span>
+                            <span style="width:8px;height:8px;border-radius:50%;background:#a855f7;display:inline-block;"></span>
+                            Server
+                        </span>
+
+                        <span>
+                            <span style="width:8px;height:8px;border-radius:50%;background:#00f5a0;display:inline-block;"></span>
+                            Endpoint
+                        </span>
+
+                        <span>
+                            <span style="width:8px;height:8px;border-radius:50%;background:#ff4757;display:inline-block;"></span>
+                            Attacker
+                        </span>
+
+                        <a href="map.html" class="view-all">Full View →</a>
+                    </div>
+                </div>
+
+                <div id="worldMap"></div>
+                <div id="mapStatus"
+                     style="font-size:0.7rem;color:var(--text-muted);padding:8px 2px;">
+                    Waiting for threat-map telemetry…
+                </div>
+            </div>
+
+            <div class="panel" style="margin-bottom:0;">
+                <div class="panel-header">
+                    <h3>
+                        <i class="fas fa-network-wired"></i>
+                        Monitored Fleet
+                    </h3>
+                    <a href="devices.html" class="view-all">All Devices →</a>
+                </div>
+
+                <div class="device-cards" id="deviceCards"></div>
+            </div>
+
+        </div>
+
+        <!-- ANALYTICS -->
+        <div class="bottom-grid" style="margin-top:20px;">
+
+            <div class="panel">
+                <div class="panel-header">
+                    <h4>
+                        <i class="fas fa-bell"></i>
+                        Live Detection Feed
+                    </h4>
+                    <a href="alerts.html" class="view-all">View All →</a>
+                </div>
+
+                <div id="recentAlerts"></div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <h4>
+                        <i class="fas fa-chart-column"></i>
+                        Top Attack Vectors
+                    </h4>
+                    <a href="threat-intel.html" class="view-all">Intel →</a>
+                </div>
+
+                <div id="topAttacks"></div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <h4>
+                        <i class="fas fa-laptop-code"></i>
+                        Endpoint Operating Systems
+                    </h4>
+                    <a href="devices.html" class="view-all">Assets →</a>
+                </div>
+
+                <div id="osDistribution"></div>
+            </div>
+
+        </div>
+
+        <!-- ACTIVITY STREAM -->
+        <div class="panel">
+            <div class="panel-header">
+                <h4>
+                    <i class="fas fa-clock-rotate-left"></i>
+                    Real-Time SecOps Activity Stream
+                </h4>
+                <a href="logs.html" class="view-all">Full Logs →</a>
+            </div>
+
+            <div id="recentActivities"></div>
+        </div>
+
+        <!-- STATUS BAR -->
+        <footer class="status-bar">
+            <span>
+                <i class="fas fa-shield-check"></i>
+                SIEM Engine: Active & Monitoring · Ingestion Port: 9999
+            </span>
+            <span id="statusBarRight">Last scan: --:--:--</span>
+        </footer>
+
+    </main>
+
+    <!-- INCIDENT DETAILS MODAL -->
+    <div id="incidentModal" class="modal-overlay">
+        <div class="modal-container">
+            <div id="incidentModalContent"></div>
+        </div>
+    </div>
+
+    <!-- API CONFIGURATION -->
+    <script>
+        window.SIEM_API_BASE = 'http://100.90.174.77:5000';
+    </script>
+
+    <!-- Leaflet JS: must load before dashboard.js -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- Application Scripts -->
+    <script src="js/theme.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/dashboard.js"></script>
+
+</body>
+</html>

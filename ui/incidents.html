@@ -1,0 +1,440 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MY SIEM — Incident Management</title>
+
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+
+    <style>
+        .expand-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: var(--radius-sm);
+            transition: var(--transition);
+        }
+
+        .expand-btn:hover {
+            color: var(--green);
+            background: var(--bg-hover);
+        }
+
+        .incident-detail-row {
+            display: none;
+        }
+
+        .incident-detail-row.show {
+            display: table-row;
+        }
+
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 12px;
+            padding: 14px;
+        }
+
+        .detail-item {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+            min-width: 0;
+            padding: 12px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+        }
+
+        .detail-item .label {
+            color: var(--text-muted);
+            font-size: .68rem;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+        }
+
+        .detail-item .value {
+            color: var(--text-primary);
+            font-size: .82rem;
+            overflow-wrap: anywhere;
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            background: rgba(0, 0, 0, .75);
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .modal-overlay.show {
+            display: flex;
+        }
+
+        .modal-container {
+            width: min(850px, 100%);
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 24px;
+            background: var(--bg-card, #0f1521);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 38px 16px;
+        }
+
+        .empty-state h3 {
+            margin: 12px 0 6px;
+        }
+
+        .empty-state p,
+        .empty-state small {
+            color: var(--text-secondary);
+        }
+
+        .loading-text {
+            text-align: center;
+            padding: 32px !important;
+            color: var(--text-secondary);
+        }
+
+        .filter-bar input {
+            min-width: 180px;
+        }
+
+        .filter-btn:disabled,
+        .page-btns button:disabled {
+            opacity: .4;
+            cursor: not-allowed;
+        }
+
+        @media (max-width: 900px) {
+            .detail-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 600px) {
+            .detail-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .modal-container {
+                padding: 16px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Sidebar -->
+    <nav class="sidebar">
+        <div class="sidebar-logo">
+            <i class="fas fa-shield-halved logo-icon"></i>
+            <div>
+                <h1>MY <span>SIEM</span></h1>
+                <span class="subtitle">Security Operations</span>
+            </div>
+        </div>
+
+        <div class="sidebar-nav">
+            <div class="nav-label">Command Center</div>
+
+            <a href="index.html">
+                <i class="fas fa-th-large"></i>
+                <span>Dashboard</span>
+            </a>
+
+            <a href="alerts.html">
+                <i class="fas fa-bell"></i>
+                <span>Alerts</span>
+                <span class="badge-side" id="alertBadge">0</span>
+            </a>
+
+            <a href="logs.html">
+                <i class="fas fa-file-alt"></i>
+                <span>Log Stream</span>
+            </a>
+
+            <a href="devices.html">
+                <i class="fas fa-server"></i>
+                <span>Endpoints</span>
+            </a>
+
+            <a href="incidents.html" class="active">
+                <i class="fas fa-shield-alt"></i>
+                <span>Incidents</span>
+            </a>
+
+            <div class="nav-label">Intelligence</div>
+
+            <a href="map.html">
+                <i class="fas fa-globe-americas"></i>
+                <span>World Map</span>
+            </a>
+
+            <a href="threat-intel.html">
+                <i class="fas fa-chart-line"></i>
+                <span>Threat Intel</span>
+            </a>
+
+            <div class="nav-label">Administration</div>
+
+            <a href="reports.html">
+                <i class="fas fa-file-pdf"></i>
+                <span>Reports</span>
+            </a>
+
+            <a href="settings.html">
+                <i class="fas fa-cog"></i>
+                <span>Settings</span>
+            </a>
+
+            <a href="users.html">
+                <i class="fas fa-users"></i>
+                <span>Users</span>
+            </a>
+        </div>
+
+        <div class="sidebar-footer">
+            <div class="user">
+                <div class="user-avatar">A</div>
+                <div class="user-info">
+                    <div class="name">SOC Administrator</div>
+                    <div class="role">SecOps Lead · Level 3</div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main content -->
+    <main class="main-content">
+        <header class="main-header">
+            <div>
+                <h2>
+                    Incident Management
+                    <span>· SecOps Triage &amp; Resolution Room</span>
+                </h2>
+            </div>
+
+            <div class="header-actions">
+                <div class="live-badge" id="liveBadge"
+                     title="Automatic refresh enabled">
+                    <span class="live-dot-sm"></span>
+                    <span>LIVE</span>
+                </div>
+
+                <button class="header-btn"
+                        type="button"
+                        onclick="document.dispatchEvent(new KeyboardEvent('keydown', {key:'k', ctrlKey:true}))"
+                        title="Search (Ctrl+K)">
+                    <i class="fas fa-search"></i>
+                    <span>Ctrl+K</span>
+                </button>
+
+                <button class="theme-toggle"
+                        type="button"
+                        onclick="toggleTheme()"
+                        id="themeToggle">
+                    <i class="fas fa-moon"></i>
+                    <span class="theme-label" id="themeLabel">Dark</span>
+                </button>
+
+                <button class="btn-refresh"
+                        type="button"
+                        onclick="loadIncidents()"
+                        title="Refresh incidents">
+                    <i class="fas fa-sync-alt" id="refreshIcon"></i>
+                </button>
+
+                <span style="color:var(--text-muted);font-size:.65rem;font-family:monospace"
+                      id="lastUpdate">Waiting for API</span>
+            </div>
+        </header>
+
+        <!-- Statistics -->
+        <div class="stats-grid">
+            <div class="stat-card" onclick="filterBySeverity('ALL')">
+                <div class="stat-header">
+                    <span class="stat-label">Total Incidents</span>
+                    <i class="fas fa-shield-virus stat-icon text-blue"></i>
+                </div>
+                <div class="stat-value text-blue" id="incidentTotal">0</div>
+                <div class="stat-footer">
+                    <span class="stat-change up">All Cases</span>
+                    <span class="stat-delta">Backend Records</span>
+                </div>
+            </div>
+
+            <div class="stat-card critical" onclick="filterBySeverity('CRITICAL')">
+                <div class="stat-header">
+                    <span class="stat-label">Critical Incidents</span>
+                    <i class="fas fa-skull-crossbones stat-icon text-red"></i>
+                </div>
+                <div class="stat-value text-red" id="incidentCritical">0</div>
+                <div class="stat-footer">
+                    <span class="stat-change down">
+                        <i class="fas fa-triangle-exclamation"></i> Immediate
+                    </span>
+                    <span class="stat-delta">P0 Priority</span>
+                </div>
+            </div>
+
+            <div class="stat-card" onclick="filterBySeverity('HIGH')">
+                <div class="stat-header">
+                    <span class="stat-label">High Priority</span>
+                    <i class="fas fa-exclamation-triangle stat-icon text-orange"></i>
+                </div>
+                <div class="stat-value text-orange" id="incidentHigh">0</div>
+                <div class="stat-footer">
+                    <span class="stat-change warning">Elevated</span>
+                    <span class="stat-delta">P1 Priority</span>
+                </div>
+            </div>
+
+            <div class="stat-card" onclick="filterByStatus('OPEN')">
+                <div class="stat-header">
+                    <span class="stat-label">Active / Open</span>
+                    <i class="fas fa-clock stat-icon text-yellow"></i>
+                </div>
+                <div class="stat-value text-yellow" id="incidentOpen">0</div>
+                <div class="stat-footer">
+                    <span class="stat-change neutral">Pending Triage</span>
+                    <span class="stat-delta">Under Review</span>
+                </div>
+            </div>
+
+            <div class="stat-card" onclick="filterByStatus('RESOLVED')">
+                <div class="stat-header">
+                    <span class="stat-label">Resolved</span>
+                    <i class="fas fa-circle-check stat-icon text-green"></i>
+                </div>
+                <div class="stat-value text-green" id="incidentResolved">0</div>
+                <div class="stat-footer">
+                    <span class="stat-change up">Mitigated</span>
+                    <span class="stat-delta">Closed Cases</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Incident table -->
+        <div class="table-container">
+            <div class="filter-bar">
+                <input type="text"
+                       id="searchInput"
+                       placeholder="🔍 Search incidents by ID, threat, host, IP..."
+                       aria-label="Search incidents">
+
+                <select id="severityFilter" aria-label="Filter by severity">
+                    <option value="ALL">All Severities</option>
+                    <option value="CRITICAL">Critical</option>
+                    <option value="HIGH">High</option>
+                    <option value="MEDIUM">Medium</option>
+                    <option value="LOW">Low</option>
+                    <option value="INFO">Info</option>
+                </select>
+
+                <select id="statusFilter" aria-label="Filter by status">
+                    <option value="ALL">All Status</option>
+                    <option value="OPEN">Open</option>
+                    <option value="IN_PROGRESS">In Progress</option>
+                    <option value="INVESTIGATING">Investigating</option>
+                    <option value="CONTAINED">Contained</option>
+                    <option value="RESOLVED">Resolved</option>
+                    <option value="CLOSED">Closed</option>
+                    <option value="FALSE_POSITIVE">False Positive</option>
+                </select>
+
+                <select id="agentFilter" aria-label="Filter by endpoint">
+                    <option value="ALL">All Endpoints</option>
+                </select>
+
+                <button class="filter-btn clear"
+                        id="resetFilters"
+                        type="button">
+                    <i class="fas fa-times"></i> Clear
+                </button>
+
+                <button class="filter-btn export"
+                        type="button"
+                        onclick="exportIncidentsCSV()">
+                    <i class="fas fa-download"></i> Export
+                </button>
+            </div>
+
+            <div class="table-scroll">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width:36px"></th>
+                            <th style="width:110px">Case ID</th>
+                            <th style="width:100px">Time</th>
+                            <th>Threat Vector</th>
+                            <th style="width:110px">Severity</th>
+                            <th style="width:130px">Triage Status</th>
+                            <th style="width:130px">Asset</th>
+                            <th style="width:150px">Actions</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="incidentsBody">
+                        <tr>
+                            <td colspan="8" class="loading-text">
+                                <i class="fas fa-spinner fa-spin text-green"></i>
+                                Connecting to SIEM backend...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="pagination">
+                <span id="pageInfo">Showing 0 incidents</span>
+                <div class="page-btns">
+                    <button id="prevPage" type="button" disabled>◀ Prev</button>
+                    <button id="nextPage" type="button" disabled>Next ▶</button>
+                </div>
+            </div>
+        </div>
+
+        <footer class="status-bar">
+            <span>
+                <i class="fas fa-circle-check" style="color:var(--green)"></i>
+                SOC Incident Response Engine
+            </span>
+            <span id="statusBarRight">Connecting to backend...</span>
+        </footer>
+    </main>
+
+    <!-- Incident details modal -->
+    <div id="incidentModal" class="modal-overlay" role="dialog"
+         aria-modal="true" aria-label="Incident details">
+        <div class="modal-container">
+            <div id="incidentModalContent"></div>
+        </div>
+    </div>
+
+    <!-- Backend configuration -->
+    <script>
+        window.SIEM_API_BASE = "http://100.90.174.77:5000";
+    </script>
+
+    <script src="js/theme.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/incidents.js"></script>
+</body>
+</html>

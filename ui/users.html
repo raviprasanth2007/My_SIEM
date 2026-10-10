@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🛡️ MY SIEM — Access Control & Analysts</title>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Master SOC Design System -->
+    <link rel="stylesheet" href="css/style.css">
+
+    <style>
+        .provision-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            padding: 20px;
+            margin-bottom: 24px;
+            transition: var(--transition);
+        }
+        .provision-form {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)) auto;
+            gap: 12px;
+            align-items: center;
+            margin-top: 14px;
+        }
+        .user-avatar-badge {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, rgba(0, 245, 160, 0.2), rgba(56, 189, 248, 0.3));
+            border: 1px solid var(--green);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.75rem;
+            color: var(--green);
+            flex-shrink: 0;
+        }
+        .user-meta-cell {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .user-meta-title {
+            font-weight: 600;
+            font-size: 0.8rem;
+            color: var(--text-primary);
+        }
+        .user-meta-sub {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ═══════════════════ SIDEBAR ═══════════════════ -->
+    <nav class="sidebar">
+        <div class="sidebar-logo">
+            <i class="fas fa-shield-halved logo-icon"></i>
+            <div>
+                <h1>MY <span>SIEM</span></h1>
+                <span class="subtitle">Security Operations</span>
+            </div>
+        </div>
+
+        <div class="sidebar-nav">
+            <div class="nav-label">Command Center</div>
+            <a href="index.html"><i class="fas fa-th-large"></i> <span>Dashboard</span></a>
+            <a href="alerts.html"><i class="fas fa-bell"></i> <span>Alerts</span> <span class="badge-side" id="alertBadge">0</span></a>
+            <a href="logs.html"><i class="fas fa-file-alt"></i> <span>Log Stream</span></a>
+            <a href="devices.html"><i class="fas fa-server"></i> <span>Endpoints</span></a>
+            <a href="incidents.html"><i class="fas fa-shield-alt"></i> <span>Incidents</span></a>
+
+            <div class="nav-label">Intelligence</div>
+            <a href="map.html"><i class="fas fa-globe-americas"></i> <span>World Map</span></a>
+            <a href="threat-intel.html"><i class="fas fa-chart-line"></i> <span>Threat Intel</span></a>
+
+            <div class="nav-label">Administration</div>
+            <a href="reports.html"><i class="fas fa-file-pdf"></i> <span>Reports</span></a>
+            <a href="settings.html"><i class="fas fa-cog"></i> <span>Settings</span></a>
+            <a href="users.html" class="active"><i class="fas fa-users"></i> <span>Users</span></a>
+        </div>
+
+        <div class="sidebar-footer">
+            <div class="user">
+                <div class="user-avatar">A</div>
+                <div class="user-info">
+                    <div class="name">SOC Administrator</div>
+                    <div class="role">SecOps Lead · Level 3</div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ═══════════════════ MAIN CONTENT ═══════════════════ -->
+    <main class="main-content">
+
+        <header class="main-header">
+            <div>
+                <h2>Access Control <span>· SOC Analysts, RBAC Roles & MFA Authentication</span></h2>
+            </div>
+            
+            <div class="header-actions">
+                <div class="live-badge" id="liveBadge" title="RBAC Enforcement Active">
+                    <span class="live-dot-sm"></span>
+                    <span>RBAC LIVE</span>
+                </div>
+
+                <button class="header-btn" onclick="document.dispatchEvent(new KeyboardEvent('keydown', {key:'k', ctrlKey:true}))" title="Search (Ctrl+K)">
+                    <i class="fas fa-search"></i> <span>Ctrl+K</span>
+                </button>
+
+                <button class="theme-toggle" onclick="toggleTheme()" id="themeToggle">
+                    <i class="fas fa-moon"></i>
+                    <span class="theme-label" id="themeLabel">Dark</span>
+                </button>
+
+                <button class="btn-refresh" onclick="loadUsers()" title="Refresh Users">
+                    <i class="fas fa-sync-alt" id="refreshIcon"></i>
+                </button>
+
+                <span style="color:var(--text-muted);font-size:.65rem;font-family:'JetBrains Mono',monospace;" id="lastUpdate">--:--:--</span>
+            </div>
+        </header>
+
+        <!-- KPI Stats -->
+        <div class="stats-grid">
+            <div class="stat-card" onclick="filterByRole('ALL')">
+                <div class="stat-header">
+                    <span class="stat-label">Total Analysts</span>
+                    <i class="fas fa-users-gear stat-icon text-blue"></i>
+                </div>
+                <div class="stat-value text-blue" id="userTotal">0</div>
+                <div class="stat-footer">
+                    <span class="stat-change up">Provisioned</span>
+                    <span class="stat-delta">All identities</span>
+                </div>
+            </div>
+
+            <div class="stat-card" onclick="filterByStatus('Active')">
+                <div class="stat-header">
+                    <span class="stat-label">Active & Online</span>
+                    <i class="fas fa-user-check stat-icon text-green"></i>
+                </div>
+                <div class="stat-value text-green" id="userActive">0</div>
+                <div class="stat-footer">
+                    <span class="stat-change up"><i class="fas fa-circle-check"></i> Authenticated</span>
+                    <span class="stat-delta">Live sessions</span>
+                </div>
+            </div>
+
+            <div class="stat-card" onclick="filterByStatus('Suspended')">
+                <div class="stat-header">
+                    <span class="stat-label">Suspended / Inactive</span>
+                    <i class="fas fa-user-xmark stat-icon text-red"></i>
+                </div>
+                <div class="stat-value text-red" id="userInactive">0</div>
+                <div class="stat-footer">
+                    <span class="stat-change down">Revoked / Locked</span>
+                    <span class="stat-delta">Restricted access</span>
+                </div>
+            </div>
+
+            <div class="stat-card" onclick="filterByRole('Admin')">
+                <div class="stat-header">
+                    <span class="stat-label">Privileged Admins</span>
+                    <i class="fas fa-user-shield stat-icon text-purple"></i>
+                </div>
+                <div class="stat-value text-purple" id="userAdmins">0</div>
+                <div class="stat-footer">
+                    <span class="stat-change neutral">L3 Authorization</span>
+                    <span class="stat-delta">Full control</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick User Provisioning Bar -->
+        <div class="provision-card">
+            <div class="panel-header" style="border:none;margin-bottom:4px;padding-bottom:0;display:flex;justify-content:space-between;align-items:center;">
+                <h3 style="font-size:0.85rem;"><i class="fas fa-user-plus text-green"></i> Provision New Security Operator</h3>
+                <span id="addStatus" style="font-size:0.75rem;"></span>
+            </div>
+            <p style="font-size:0.72rem;color:var(--text-secondary);margin-bottom:12px;">
+                Assign Role-Based Access Control (RBAC) privileges, MFA requirements, and SOC tier permissions.
+            </p>
+
+            <form class="provision-form" onsubmit="event.preventDefault(); addUser();">
+                <input type="text" id="userName" placeholder="Full name (e.g., Alex Vance)" required class="siem-input">
+                <input type="email" id="userEmail" placeholder="Analyst email (e.g., alex@soc.local)" required class="siem-input">
+                <input type="text" id="userUsername" placeholder="Username (optional)" class="siem-input">
+                
+                <select id="userRole" class="siem-select">
+                    <option value="Security Analyst">Security Analyst (L1)</option>
+                    <option value="SOC Lead">SOC Lead / Tier 2</option>
+                    <option value="Threat Hunter">Threat Hunter</option>
+                    <option value="Incident Responder">Incident Responder</option>
+                    <option value="Admin">SOC Administrator (L3)</option>
+                    <option value="Compliance Auditor">Compliance Auditor (Read-Only)</option>
+                </select>
+
+                <button type="submit" class="filter-btn" style="background:var(--green);color:#000;font-weight:700;white-space:nowrap;">
+                    <i class="fas fa-plus"></i> Add Analyst
+                </button>
+            </form>
+        </div>
+
+        <!-- Users Table -->
+        <div class="table-container">
+            <div class="filter-bar">
+                <input type="text" id="searchInput" placeholder="🔍 Search analysts by name, username, or email..." oninput="searchUsers()">
+                
+                <select id="statusFilter" onchange="searchUsers()">
+                    <option value="ALL">All Statuses</option>
+                    <option value="Active">Active</option>
+                    <option value="Inactive">Inactive</option>
+                    <option value="Suspended">Suspended</option>
+                </select>
+
+                <select id="roleFilter" onchange="searchUsers()">
+                    <option value="ALL">All Roles</option>
+                    <option value="Admin">SOC Administrator</option>
+                    <option value="SOC Lead">SOC Lead</option>
+                    <option value="Security Analyst">Security Analyst</option>
+                    <option value="Threat Hunter">Threat Hunter</option>
+                    <option value="Incident Responder">Incident Responder</option>
+                    <option value="Compliance Auditor">Compliance Auditor</option>
+                </select>
+
+                <select id="mfaFilter" onchange="searchUsers()">
+                    <option value="ALL">All MFA States</option>
+                    <option value="enabled">MFA Enforced</option>
+                    <option value="disabled">MFA Pending</option>
+                </select>
+
+                <button class="filter-btn clear" onclick="resetFilters()"><i class="fas fa-times"></i> Clear</button>
+                <button class="filter-btn export" onclick="exportUsersCSV()"><i class="fas fa-download"></i> Export CSV</button>
+            </div>
+
+            <div class="table-scroll">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Security Operator</th>
+                            <th>Username</th>
+                            <th>Email Address</th>
+                            <th style="width:140px;">Assigned Role</th>
+                            <th style="width:110px;">Status</th>
+                            <th style="width:120px;">MFA Protocol</th>
+                            <th style="width:130px;">Last Activity</th>
+                            <th style="width:110px;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersBody">
+                        <tr><td colspan="8" class="loading-text"><i class="fas fa-spinner fa-spin text-green"></i> Loading analyst directory...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="pagination">
+                <span id="pageInfo">Showing 0 analysts</span>
+                <div class="page-btns">
+                    <button id="prevPage" onclick="changePage(-1)">◀ Prev</button>
+                    <button id="nextPage" onclick="changePage(1)">Next ▶</button>
+                </div>
+            </div>
+        </div>
+
+        <footer class="status-bar">
+            <span><i class="fas fa-shield-check" style="color:var(--green)"></i> Directory Service: PAM & RBAC Sync Online</span>
+            <span id="statusBarRight">Last sync: --:--:--</span>
+        </footer>
+
+    </main>
+
+    <!-- User Edit / Inspection Modal -->
+    <div id="userModal" class="modal-overlay">
+        <div class="modal-container">
+            <div id="userModalContent"></div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+
+    <script>
+       window.SIEM_API_BASE = 'http://100.90.174.77:5000';
+   </script>
+
+    <script src="js/theme.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/users.js"></script>
+
+</body>
+</html>

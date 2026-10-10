@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🛡️ MY SIEM — Compliance & Audit Reports</title>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Master SOC Design System -->
+    <link rel="stylesheet" href="css/style.css">
+
+    <style>
+        .report-gen-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+        .date-btn-group {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+        .date-btn {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            padding: 6px 14px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-size: 0.72rem;
+            transition: var(--transition);
+        }
+        .date-btn:hover {
+            border-color: var(--green);
+            color: var(--text-primary);
+        }
+        .date-btn.active {
+            border-color: var(--green);
+            background: var(--green-subtle);
+            color: var(--green);
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ═══════════════════ SIDEBAR ═══════════════════ -->
+    <nav class="sidebar">
+        <div class="sidebar-logo">
+            <i class="fas fa-shield-halved logo-icon"></i>
+            <div>
+                <h1>MY <span>SIEM</span></h1>
+                <span class="subtitle">Security Operations</span>
+            </div>
+        </div>
+
+        <div class="sidebar-nav">
+            <div class="nav-label">Command Center</div>
+            <a href="index.html"><i class="fas fa-th-large"></i> <span>Dashboard</span></a>
+            <a href="alerts.html"><i class="fas fa-bell"></i> <span>Alerts</span> <span class="badge-side" id="alertBadge">0</span></a>
+            <a href="logs.html"><i class="fas fa-file-alt"></i> <span>Log Stream</span></a>
+            <a href="devices.html"><i class="fas fa-server"></i> <span>Endpoints</span></a>
+            <a href="incidents.html"><i class="fas fa-shield-alt"></i> <span>Incidents</span></a>
+
+            <div class="nav-label">Intelligence</div>
+            <a href="map.html"><i class="fas fa-globe-americas"></i> <span>World Map</span></a>
+            <a href="threat-intel.html"><i class="fas fa-chart-line"></i> <span>Threat Intel</span></a>
+
+            <div class="nav-label">Administration</div>
+            <a href="reports.html" class="active"><i class="fas fa-file-pdf"></i> <span>Reports</span></a>
+            <a href="settings.html"><i class="fas fa-cog"></i> <span>Settings</span></a>
+            <a href="users.html"><i class="fas fa-users"></i> <span>Users</span></a>
+        </div>
+
+        <div class="sidebar-footer">
+            <div class="user">
+                <div class="user-avatar">A</div>
+                <div class="user-info">
+                    <div class="name">SOC Administrator</div>
+                    <div class="role">SecOps Lead · Level 3</div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ═══════════════════ MAIN CONTENT ═══════════════════ -->
+    <main class="main-content">
+
+        <header class="main-header">
+            <div>
+                <h2>Security Reports <span>· Compliance Audits, FIM Logs & Summaries</span></h2>
+            </div>
+            
+            <div class="header-actions">
+                <button class="header-btn" onclick="document.dispatchEvent(new KeyboardEvent('keydown', {key:'k', ctrlKey:true}))" title="Search (Ctrl+K)">
+                    <i class="fas fa-search"></i> <span>Ctrl+K</span>
+                </button>
+
+                <button class="theme-toggle" onclick="toggleTheme()" id="themeToggle">
+                    <i class="fas fa-moon"></i>
+                    <span class="theme-label" id="themeLabel">Dark</span>
+                </button>
+
+                <span style="color:var(--text-muted);font-size:.65rem;font-family:'JetBrains Mono',monospace;" id="lastUpdate">--:--:--</span>
+            </div>
+        </header>
+
+        <!-- Stats Grid -->
+        <div class="stats-grid">
+            <div class="stat-card" onclick="filterByType('ALL')">
+                <div class="stat-header">
+                    <span class="stat-label">Generated Reports</span>
+                    <i class="fas fa-file-pdf stat-icon text-blue"></i>
+                </div>
+                <div class="stat-value text-blue" id="reportTotal">0</div>
+                <div class="stat-footer">
+                    <span class="stat-change up">Archives</span>
+                    <span class="stat-delta">Ready</span>
+                </div>
+            </div>
+
+            <div class="stat-card" onclick="filterByType('Security')">
+                <div class="stat-header">
+                    <span class="stat-label">Security Briefs</span>
+                    <i class="fas fa-shield-virus stat-icon text-red"></i>
+                </div>
+                <div class="stat-value text-red" id="reportSecurity">0</div>
+                <div class="stat-footer">
+                    <span class="stat-change down">Detections</span>
+                    <span class="stat-delta">Triaged</span>
+                </div>
+            </div>
+
+            <div class="stat-card" onclick="filterByType('Incident')">
+                <div class="stat-header">
+                    <span class="stat-label">Incident Audits</span>
+                    <i class="fas fa-triangle-exclamation stat-icon text-orange"></i>
+                </div>
+                <div class="stat-value text-orange" id="reportIncident">0</div>
+                <div class="stat-footer">
+                    <span class="stat-change warning">Breach Reviews</span>
+                    <span class="stat-delta">Logged</span>
+                </div>
+            </div>
+
+            <div class="stat-card" onclick="filterByType('Audit')">
+                <div class="stat-header">
+                    <span class="stat-label">PCI / ISO Audits</span>
+                    <i class="fas fa-certificate stat-icon text-green"></i>
+                </div>
+                <div class="stat-value text-green" id="reportAudit">0</div>
+                <div class="stat-footer">
+                    <span class="stat-change up">Compliant</span>
+                    <span class="stat-delta">Validated</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Report Generator Card -->
+        <div class="report-gen-card">
+            <div class="panel-header" style="border:none;margin-bottom:8px;padding-bottom:0;">
+                <h3><i class="fas fa-wand-magic-sparkles text-green"></i> On-Demand SOC Report Generator</h3>
+            </div>
+            <p style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:14px;">
+                Compile real-time telemetry from Linux Agents, FIM modules, and firewall ingress into an executive compliance package.
+            </p>
+
+            <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+                <select id="genReportType" class="siem-select">
+                    <option value="Executive">Executive Security Brief (Daily)</option>
+                    <option value="FIM">FIM Integrity & Tamper Audit</option>
+                    <option value="Incidents">Critical Breach Investigation Log</option>
+                    <option value="Compliance">PCI-DSS / ISO27001 Access Audit</option>
+                </select>
+
+                <select id="genFormat" class="siem-select">
+                    <option value="PDF">PDF Format</option>
+                    <option value="CSV">CSV Spreadsheet</option>
+                    <option value="JSON">JSON Telemetry Dump</option>
+                </select>
+
+                <button class="filter-btn" onclick="generateReport()"><i class="fas fa-file-circle-plus"></i> Compile Report</button>
+            </div>
+
+            <div class="date-btn-group">
+                <button class="date-btn active" onclick="setDateFilter('today')">Today</button>
+                <button class="date-btn" onclick="setDateFilter('yesterday')">Yesterday</button>
+                <button class="date-btn" onclick="setDateFilter('week')">Last 7 Days</button>
+                <button class="date-btn" onclick="setDateFilter('month')">Last 30 Days</button>
+            </div>
+        </div>
+
+        <!-- Reports Archive Table -->
+        <div class="table-container">
+            <div class="filter-bar">
+                <input type="text" id="searchInput" placeholder="🔍 Search generated reports..." oninput="searchReports()">
+                
+                <select id="typeFilter" onchange="searchReports()">
+                    <option value="ALL">All Report Types</option>
+                    <option value="Security">Security</option>
+                    <option value="Incident">Incident</option>
+                    <option value="Audit">Audit</option>
+                    <option value="Performance">Performance</option>
+                </select>
+
+                <select id="formatFilter" onchange="searchReports()">
+                    <option value="ALL">All Formats</option>
+                    <option value="PDF">PDF</option>
+                    <option value="CSV">CSV</option>
+                    <option value="JSON">JSON</option>
+                </select>
+
+                <button class="filter-btn clear" onclick="resetFilters()"><i class="fas fa-times"></i> Clear</button>
+                <button class="filter-btn export" onclick="exportReportsCSV()"><i class="fas fa-download"></i> Export List</button>
+            </div>
+
+            <div class="table-scroll">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width:110px;">Report ID</th>
+                            <th>Report Title & Subject</th>
+                            <th>Category</th>
+                            <th style="width:90px;">Format</th>
+                            <th style="width:110px;">Status</th>
+                            <th style="width:110px;">Generated</th>
+                            <th style="width:90px;">Size</th>
+                            <th style="width:110px;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="reportsBody">
+                        <tr><td colspan="8" class="loading-text"><i class="fas fa-spinner fa-spin text-green"></i> Loading reports archive...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="pagination">
+                <span id="pageInfo">Showing 0 reports</span>
+                <div class="page-btns">
+                    <button id="prevPage" onclick="changePage(-1)">◀ Prev</button>
+                    <button id="nextPage" onclick="changePage(1)">Next ▶</button>
+                </div>
+            </div>
+        </div>
+
+        <footer class="status-bar">
+            <span><i class="fas fa-check-circle" style="color:var(--green)"></i> Reporting Daemon: Ready · Automated Daily Archives</span>
+            <span id="statusBarRight">Last scan: --:--:--</span>
+        </footer>
+
+    </main>
+
+    <!-- Report Preview & Download Modal -->
+    <div id="reportModal" class="modal-overlay">
+        <div class="modal-container" style="max-width:720px;">
+            <div id="reportModalContent"></div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+
+    <script>
+       window.SIEM_API_BASE = 'http://100.90.174.77:5000';
+   </script>
+
+    <script src="js/theme.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/reports.js"></script>
+
+</body>
+</html>

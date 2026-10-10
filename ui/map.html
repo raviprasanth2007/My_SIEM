@@ -1,0 +1,1965 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        MY SIEM — Global Infrastructure & Threat Map
+    </title>
+
+
+    <!-- =====================================================
+         FONT AWESOME
+    ====================================================== -->
+
+    <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    >
+
+
+    <!-- =====================================================
+         MAPBOX GL JS
+    ====================================================== -->
+
+    <link
+        rel="stylesheet"
+        href="https://api.mapbox.com/mapbox-gl-js/v3.30.0/mapbox-gl.css"
+    >
+
+
+    <!-- =====================================================
+         MAIN SIEM CSS
+    ====================================================== -->
+
+    <link
+        rel="stylesheet"
+        href="css/style.css"
+    >
+
+
+    <!-- =====================================================
+         WORLD MAP PAGE CSS
+    ====================================================== -->
+
+    <style>
+
+        .map-page-container {
+
+            display: flex;
+
+            flex-direction: column;
+
+            gap: 16px;
+
+        }
+
+
+        /* =====================================================
+           MAP CONTROLS
+        ====================================================== */
+
+        .map-controls {
+
+            display: flex;
+
+            flex-wrap: wrap;
+
+            gap: 10px;
+
+            align-items: center;
+
+            padding: 12px 18px;
+
+            background: var(--bg-card);
+
+            border: 1px solid var(--border-color);
+
+            border-radius: var(--radius);
+
+        }
+
+
+        .map-controls .cg {
+
+            display: flex;
+
+            gap: 6px;
+
+            align-items: center;
+
+            flex-wrap: wrap;
+
+        }
+
+
+        .map-controls button {
+
+            background: var(--bg-primary);
+
+            border: 1px solid var(--border-color);
+
+            color: var(--text-primary);
+
+            padding: 6px 14px;
+
+            border-radius: var(--radius-sm);
+
+            cursor: pointer;
+
+            font-size: 0.74rem;
+
+            transition: all 0.2s ease;
+
+            white-space: nowrap;
+
+            display: inline-flex;
+
+            align-items: center;
+
+            gap: 6px;
+
+        }
+
+
+        .map-controls button:hover,
+
+        .map-controls button.active {
+
+            border-color: var(--green);
+
+            background: var(--green-subtle);
+
+            color: var(--green);
+
+        }
+
+
+        /* =====================================================
+           MAP STATS
+        ====================================================== */
+
+        .map-stats {
+
+            display: flex;
+
+            gap: 14px;
+
+            margin-left: auto;
+
+            font-size: 0.72rem;
+
+            flex-wrap: wrap;
+
+            align-items: center;
+
+        }
+
+
+        .map-stats span {
+
+            display: flex;
+
+            align-items: center;
+
+            gap: 5px;
+
+        }
+
+
+        .di {
+
+            width: 8px;
+
+            height: 8px;
+
+            border-radius: 50%;
+
+            display: inline-block;
+
+        }
+
+
+        .di.online {
+
+            background: #00f5a0;
+
+            box-shadow: 0 0 6px #00f5a0;
+
+        }
+
+
+        .di.warning {
+
+            background: #facc15;
+
+            box-shadow: 0 0 6px #facc15;
+
+        }
+
+
+        .di.offline {
+
+            background: #ff4757;
+
+            box-shadow: 0 0 6px #ff4757;
+
+        }
+
+
+        .di.threat {
+
+            background: #ff3158;
+
+            box-shadow: 0 0 6px #ff3158;
+
+        }
+
+
+        /* =====================================================
+           MAP CARD
+        ====================================================== */
+
+        .map-card {
+
+            background: var(--bg-card);
+
+            border: 1px solid var(--border-color);
+
+            border-radius: var(--radius);
+
+            overflow: hidden;
+
+            box-shadow: var(--shadow);
+
+        }
+
+
+        .map-card-header {
+
+            display: flex;
+
+            justify-content: space-between;
+
+            align-items: center;
+
+            padding: 14px 18px;
+
+            border-bottom: 1px solid var(--border-color);
+
+        }
+
+
+        .map-card-header h3 {
+
+            margin: 0;
+
+            font-size: 0.92rem;
+
+            font-weight: 600;
+
+            display: flex;
+
+            align-items: center;
+
+            gap: 8px;
+
+        }
+
+
+        .map-status-pill {
+
+            font-size: 0.65rem;
+
+            color: var(--text-secondary);
+
+            padding: 4px 14px;
+
+            background: var(--bg-primary);
+
+            border-radius: 20px;
+
+            border: 1px solid var(--border-color);
+
+            display: flex;
+
+            align-items: center;
+
+            gap: 6px;
+
+        }
+
+
+        .pulse-dot {
+
+            width: 7px;
+
+            height: 7px;
+
+            border-radius: 50%;
+
+            background: #00f5a0;
+
+            animation: pulse-dot 1.5s infinite;
+
+        }
+
+
+        @keyframes pulse-dot {
+
+            0% {
+
+                box-shadow:
+                    0 0 0 0
+                    rgba(0,245,160,0.65);
+
+            }
+
+            70% {
+
+                box-shadow:
+                    0 0 0 8px
+                    rgba(0,245,160,0);
+
+            }
+
+            100% {
+
+                box-shadow:
+                    0 0 0 0
+                    rgba(0,245,160,0);
+
+            }
+
+        }
+
+
+        /* =====================================================
+           MAP
+        ====================================================== */
+
+        #mapWrap {
+
+            position: relative;
+
+            width: 100%;
+
+            height: 600px;
+
+            background: #030814;
+
+            overflow: hidden;
+
+        }
+
+
+        #worldMap {
+
+            position: absolute;
+
+            inset: 0;
+
+            width: 100%;
+
+            height: 100%;
+
+        }
+
+
+        /* =====================================================
+           MAPBOX CONTROLS
+        ====================================================== */
+
+        .mapboxgl-ctrl-group {
+
+            background:
+                rgba(5,12,28,0.94) !important;
+
+            border:
+                1px solid #263241 !important;
+
+        }
+
+
+        .mapboxgl-ctrl-group button {
+
+            background:
+                transparent !important;
+
+        }
+
+
+        .mapboxgl-ctrl-icon {
+
+            filter: invert(1);
+
+        }
+
+
+        .mapboxgl-ctrl-attrib {
+
+            background:
+                rgba(5,12,28,0.82) !important;
+
+            color:
+                #9ca3af !important;
+
+        }
+
+
+        .mapboxgl-ctrl-attrib a {
+
+            color:
+                #9ca3af !important;
+
+        }
+
+
+        /* =====================================================
+           SVG TELEMETRY OVERLAY
+        ====================================================== */
+
+        #svgOverlay {
+
+            position: absolute;
+
+            inset: 0;
+
+            width: 100%;
+
+            height: 100%;
+
+            z-index: 20;
+
+            pointer-events: none;
+
+            overflow: hidden;
+
+        }
+
+
+        /* =====================================================
+           THREAT ARC
+        ====================================================== */
+
+        .threat-arc {
+
+            fill: none;
+
+            stroke: #ff3158;
+
+            stroke-width: 2;
+
+            stroke-dasharray: 8 6;
+
+            opacity: 0.85;
+
+            filter:
+                drop-shadow(
+                    0 0 5px #ff3158
+                );
+
+            animation:
+                dashMove 1.5s linear infinite;
+
+        }
+
+
+        @keyframes dashMove {
+
+            to {
+
+                stroke-dashoffset: -28;
+
+            }
+
+        }
+
+
+        /* =====================================================
+           THREAT
+        ====================================================== */
+
+        .threat-point {
+
+            fill: #ff3158;
+
+            stroke: white;
+
+            stroke-width: 1.5;
+
+            filter:
+                drop-shadow(
+                    0 0 8px #ff3158
+                );
+
+            cursor: pointer;
+
+            pointer-events: auto;
+
+        }
+
+
+        .threat-pulse {
+
+            fill: none;
+
+            stroke: #ff3158;
+
+            stroke-width: 1;
+
+            opacity: 0.5;
+
+        }
+
+
+        /* =====================================================
+           SERVER
+        ====================================================== */
+
+        .server-point {
+
+            fill: #00e5ff;
+
+            stroke: white;
+
+            stroke-width: 2;
+
+            filter:
+                drop-shadow(
+                    0 0 10px #00e5ff
+                );
+
+            cursor: pointer;
+
+            pointer-events: auto;
+
+        }
+
+
+        .server-pulse {
+
+            fill: none;
+
+            stroke: #00e5ff;
+
+            stroke-width: 1.5;
+
+            opacity: 0.45;
+
+        }
+
+
+        /* =====================================================
+           AGENT
+        ====================================================== */
+
+        .agent-point {
+
+            stroke: white;
+
+            stroke-width: 1.5;
+
+            cursor: pointer;
+
+            pointer-events: auto;
+
+        }
+
+
+        .agent-online {
+
+            fill: #00f5a0;
+
+            filter:
+                drop-shadow(
+                    0 0 7px #00f5a0
+                );
+
+        }
+
+
+        .agent-warning {
+
+            fill: #facc15;
+
+            filter:
+                drop-shadow(
+                    0 0 7px #facc15
+                );
+
+        }
+
+
+        .agent-offline {
+
+            fill: #ff4757;
+
+            filter:
+                drop-shadow(
+                    0 0 7px #ff4757
+                );
+
+        }
+
+
+        /* =====================================================
+           RADAR
+        ====================================================== */
+
+        .radar-ring {
+
+            fill: none;
+
+            stroke: #00e5ff;
+
+            stroke-width: 1;
+
+            opacity: 0.25;
+
+        }
+
+
+        .radar-line {
+
+            stroke: #00e5ff;
+
+            stroke-width: 2;
+
+            opacity: 0.75;
+
+        }
+
+
+        /* =====================================================
+           HEAT
+        ====================================================== */
+
+        .heat-circle {
+
+            fill: #ff3158;
+
+            opacity: 0.12;
+
+            filter:
+                blur(3px);
+
+        }
+
+
+        /* =====================================================
+           LABEL
+        ====================================================== */
+
+        .map-label {
+
+            font-family:
+                "JetBrains Mono",
+                monospace;
+
+            font-size: 10px;
+
+            font-weight: 600;
+
+            fill: white;
+
+            paint-order: stroke;
+
+            stroke: #030814;
+
+            stroke-width: 3px;
+
+            stroke-linejoin: round;
+
+            pointer-events: none;
+
+        }
+
+
+        /* =====================================================
+           ZOOM BADGE
+        ====================================================== */
+
+        #zoomBadge {
+
+            position: absolute;
+
+            bottom: 12px;
+
+            right: 12px;
+
+            z-index: 30;
+
+            background:
+                rgba(5,12,28,0.92);
+
+            border:
+                1px solid #263241;
+
+            border-radius: 6px;
+
+            padding: 4px 10px;
+
+            font-size: 0.65rem;
+
+            color: #00f5a0;
+
+            font-family:
+                "JetBrains Mono",
+                monospace;
+
+            pointer-events: none;
+
+        }
+
+
+        /* =====================================================
+           LEGEND
+        ====================================================== */
+
+        .map-legend {
+
+            display: flex;
+
+            gap: 20px;
+
+            padding: 12px 18px;
+
+            flex-wrap: wrap;
+
+            justify-content: center;
+
+            border-top:
+                1px solid
+                var(--border-color);
+
+            background:
+                var(--bg-card);
+
+        }
+
+
+        .legend-item {
+
+            display: flex;
+
+            align-items: center;
+
+            gap: 6px;
+
+            font-size: 0.7rem;
+
+            color:
+                var(--text-secondary);
+
+        }
+
+
+        .ld {
+
+            width: 10px;
+
+            height: 10px;
+
+            border-radius: 50%;
+
+        }
+
+
+        .ld.server {
+
+            background: #00e5ff;
+
+            box-shadow:
+                0 0 8px #00e5ff;
+
+        }
+
+
+        .ld.online {
+
+            background: #00f5a0;
+
+            box-shadow:
+                0 0 8px #00f5a0;
+
+        }
+
+
+        .ld.warning {
+
+            background: #facc15;
+
+            box-shadow:
+                0 0 8px #facc15;
+
+        }
+
+
+        .ld.offline {
+
+            background: #ff4757;
+
+            box-shadow:
+                0 0 8px #ff4757;
+
+        }
+
+
+        .ld.threat {
+
+            background: #ff3158;
+
+            box-shadow:
+                0 0 8px #ff3158;
+
+        }
+
+
+        .ll {
+
+            width: 24px;
+
+            height: 3px;
+
+            border-radius: 2px;
+
+        }
+
+
+        .ll.conn {
+
+            background: #38bdf8;
+
+        }
+
+
+        .ll.atk {
+
+            background: #ff4757;
+
+        }
+
+
+        /* =====================================================
+           MAPBOX POPUP
+        ====================================================== */
+
+        .mapboxgl-popup-content {
+
+            background:
+                #07101f !important;
+
+            color:
+                #e5edf7 !important;
+
+            border:
+                1px solid #263241 !important;
+
+            border-radius:
+                8px !important;
+
+            box-shadow:
+                0 10px 35px
+                rgba(0,0,0,0.45) !important;
+
+        }
+
+
+        .mapboxgl-popup-tip {
+
+            border-top-color:
+                #07101f !important;
+
+            border-bottom-color:
+                #07101f !important;
+
+        }
+
+
+        .map-popup {
+
+            min-width: 210px;
+
+            font-family:
+                Inter,
+                Arial,
+                sans-serif;
+
+        }
+
+
+        .map-popup-title {
+
+            font-size: 13px;
+
+            font-weight: 700;
+
+            margin-bottom: 8px;
+
+        }
+
+
+        .map-popup-title.server {
+
+            color: #00e5ff;
+
+        }
+
+
+        .map-popup-title.agent {
+
+            color: #00f5a0;
+
+        }
+
+
+        .map-popup-title.threat {
+
+            color: #ff4757;
+
+        }
+
+
+        .map-popup-row {
+
+            display: flex;
+
+            justify-content: space-between;
+
+            gap: 14px;
+
+            padding: 3px 0;
+
+            font-size: 11px;
+
+        }
+
+
+        .map-popup-row span:first-child {
+
+            color: #7f8da3;
+
+        }
+
+
+        .map-popup-row span:last-child {
+
+            color: #e5edf7;
+
+            text-align: right;
+
+        }
+
+
+        /* =====================================================
+           RESPONSIVE
+        ====================================================== */
+
+        @media (max-width: 992px) {
+
+            .map-controls {
+
+                flex-direction: column;
+
+                align-items: stretch;
+
+            }
+
+
+            .map-stats {
+
+                margin-left: 0;
+
+                justify-content: center;
+
+            }
+
+
+            #mapWrap {
+
+                height: 440px;
+
+            }
+
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+
+<!-- =========================================================
+     SIDEBAR
+========================================================== -->
+
+<nav class="sidebar">
+
+    <div class="sidebar-logo">
+
+        <i class="fas fa-shield-halved logo-icon"></i>
+
+        <div>
+
+            <h1>
+                MY <span>SIEM</span>
+            </h1>
+
+            <span class="subtitle">
+                Security Operations
+            </span>
+
+        </div>
+
+    </div>
+
+
+    <div class="sidebar-nav">
+
+        <div class="nav-label">
+            Command Center
+        </div>
+
+
+        <a href="index.html">
+
+            <i class="fas fa-th-large"></i>
+
+            <span>
+                Dashboard
+            </span>
+
+        </a>
+
+
+        <a href="alerts.html">
+
+            <i class="fas fa-bell"></i>
+
+            <span>
+                Alerts
+            </span>
+
+            <span
+                class="badge-side"
+                id="alertBadge"
+            >
+                0
+            </span>
+
+        </a>
+
+
+        <a href="logs.html">
+
+            <i class="fas fa-file-alt"></i>
+
+            <span>
+                Log Stream
+            </span>
+
+        </a>
+
+
+        <a href="devices.html">
+
+            <i class="fas fa-server"></i>
+
+            <span>
+                Endpoints
+            </span>
+
+        </a>
+
+
+        <a href="incidents.html">
+
+            <i class="fas fa-shield-alt"></i>
+
+            <span>
+                Incidents
+            </span>
+
+        </a>
+
+
+        <div class="nav-label">
+            Intelligence
+        </div>
+
+
+        <a
+            href="map.html"
+            class="active"
+        >
+
+            <i class="fas fa-globe-americas"></i>
+
+            <span>
+                World Map
+            </span>
+
+        </a>
+
+
+        <a href="threat-intel.html">
+
+            <i class="fas fa-chart-line"></i>
+
+            <span>
+                Threat Intel
+            </span>
+
+        </a>
+
+
+        <div class="nav-label">
+            Administration
+        </div>
+
+
+        <a href="reports.html">
+
+            <i class="fas fa-file-pdf"></i>
+
+            <span>
+                Reports
+            </span>
+
+        </a>
+
+
+        <a href="settings.html">
+
+            <i class="fas fa-cog"></i>
+
+            <span>
+                Settings
+            </span>
+
+        </a>
+
+
+        <a href="users.html">
+
+            <i class="fas fa-users"></i>
+
+            <span>
+                Users
+            </span>
+
+        </a>
+
+    </div>
+
+
+    <div class="sidebar-footer">
+
+        <div class="user">
+
+            <div class="user-avatar">
+                A
+            </div>
+
+            <div class="user-info">
+
+                <div class="name">
+                    SOC Administrator
+                </div>
+
+                <div class="role">
+                    SecOps Lead · Level 3
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</nav>
+
+
+<!-- =========================================================
+     MAIN
+========================================================== -->
+
+<main class="main-content">
+
+
+    <!-- HEADER -->
+
+    <header class="main-header">
+
+        <div>
+
+            <h2>
+
+                World Map
+
+                <span>
+                    · Global Threat Vectors & Defense Perimeter
+                </span>
+
+            </h2>
+
+        </div>
+
+
+        <div class="header-actions">
+
+
+            <div
+                class="live-badge"
+                id="liveBadge"
+                onclick="toggleLive()"
+            >
+
+                <span
+                    class="live-dot-sm"
+                    id="liveDot"
+                ></span>
+
+                <span id="liveLabel">
+                    LIVE
+                </span>
+
+            </div>
+
+
+            <button
+                class="header-btn"
+                onclick="
+                    document.dispatchEvent(
+                        new KeyboardEvent(
+                            'keydown',
+                            {
+                                key:'k',
+                                ctrlKey:true
+                            }
+                        )
+                    )
+                "
+            >
+
+                <i class="fas fa-search"></i>
+
+                <span>
+                    Ctrl+K
+                </span>
+
+            </button>
+
+
+            <button
+                class="theme-toggle"
+                onclick="toggleTheme()"
+                id="themeToggle"
+            >
+
+                <i class="fas fa-moon"></i>
+
+                <span
+                    class="theme-label"
+                    id="themeLabel"
+                >
+                    Dark
+                </span>
+
+            </button>
+
+
+            <button
+                class="btn-refresh"
+                onclick="fullReload()"
+            >
+
+                <i
+                    class="fas fa-sync-alt"
+                    id="refreshIcon"
+                ></i>
+
+            </button>
+
+
+            <span
+                id="lastUpdate"
+                style="
+                    color:var(--text-muted);
+                    font-size:.65rem;
+                    font-family:'JetBrains Mono',monospace;
+                "
+            >
+                --:--:--
+            </span>
+
+        </div>
+
+    </header>
+
+
+    <div class="map-page-container">
+
+
+        <!-- =================================================
+             STATS
+        ================================================== -->
+
+        <div class="stats-grid">
+
+
+            <div class="stat-card">
+
+                <div class="stat-header">
+
+                    <span class="stat-label">
+                        Geolocations
+                    </span>
+
+                    <i
+                        class="
+                            fas
+                            fa-globe
+                            stat-icon
+                            text-blue
+                        "
+                    ></i>
+
+                </div>
+
+
+                <div
+                    class="
+                        stat-value
+                        text-blue
+                    "
+                    id="mapCountryCount"
+                >
+                    0
+                </div>
+
+
+                <div class="stat-footer">
+
+                    <span class="stat-change up">
+
+                        <i
+                            class="
+                                fas
+                                fa-earth-americas
+                            "
+                        ></i>
+
+                        Multi-region
+
+                    </span>
+
+                    <span class="stat-delta">
+                        Monitored
+                    </span>
+
+                </div>
+
+            </div>
+
+
+            <div class="stat-card">
+
+                <div class="stat-header">
+
+                    <span class="stat-label">
+                        Active Endpoints
+                    </span>
+
+                    <i
+                        class="
+                            fas
+                            fa-server
+                            stat-icon
+                            text-green
+                        "
+                    ></i>
+
+                </div>
+
+
+                <div
+                    class="
+                        stat-value
+                        text-green
+                    "
+                    id="mapOnlineDevices"
+                >
+                    0
+                </div>
+
+
+                <div class="stat-footer">
+
+                    <span class="stat-change up">
+
+                        <i class="fas fa-check"></i>
+
+                        Operational
+
+                    </span>
+
+                    <span class="stat-delta">
+                        Secure Tunnel
+                    </span>
+
+                </div>
+
+            </div>
+
+
+            <div class="stat-card critical">
+
+                <div class="stat-header">
+
+                    <span class="stat-label">
+                        Attack Vectors
+                    </span>
+
+                    <i
+                        class="
+                            fas
+                            fa-skull-crossbones
+                            stat-icon
+                            text-red
+                        "
+                    ></i>
+
+                </div>
+
+
+                <div
+                    class="
+                        stat-value
+                        text-red
+                    "
+                    id="mapThreatCount"
+                >
+                    0
+                </div>
+
+
+                <div class="stat-footer">
+
+                    <span class="stat-change down">
+
+                        <i
+                            class="
+                                fas
+                                fa-triangle-exclamation
+                            "
+                        ></i>
+
+                        Inbound Arcs
+
+                    </span>
+
+                    <span class="stat-delta">
+                        Live
+                    </span>
+
+                </div>
+
+            </div>
+
+
+            <div class="stat-card">
+
+                <div class="stat-header">
+
+                    <span class="stat-label">
+                        Perimeter Integrity
+                    </span>
+
+                    <i
+                        class="
+                            fas
+                            fa-shield-halved
+                            stat-icon
+                            text-green
+                        "
+                    ></i>
+
+                </div>
+
+
+                <div
+                    class="
+                        stat-value
+                        text-green
+                    "
+                    id="mapProtectedCount"
+                >
+                    94%
+                </div>
+
+
+                <div class="stat-footer">
+
+                    <span
+                        class="stat-change up"
+                        id="protectedStatus"
+                    >
+                        🟢 Secure
+                    </span>
+
+                    <span class="stat-delta">
+                        Fleet Health
+                    </span>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- =================================================
+             CONTROLS
+        ================================================== -->
+
+        <div class="map-controls">
+
+
+            <div class="cg">
+
+                <button
+                    onclick="zoomInMap()"
+                    title="Zoom in"
+                >
+
+                    <i class="fas fa-plus"></i>
+
+                </button>
+
+
+                <button
+                    onclick="zoomOutMap()"
+                    title="Zoom out"
+                >
+
+                    <i class="fas fa-minus"></i>
+
+                </button>
+
+
+                <button
+                    onclick="resetView()"
+                >
+
+                    <i class="fas fa-expand"></i>
+
+                    Global
+
+                </button>
+
+
+                <button
+                    onclick="flyToIndia()"
+                >
+
+                    <i
+                        class="
+                            fas
+                            fa-location-crosshairs
+                        "
+                    ></i>
+
+                    India Core
+
+                </button>
+
+            </div>
+
+
+            <div class="cg">
+
+                <button
+                    id="btnLinks"
+                    class="active"
+                    onclick="toggleLayer('links')"
+                >
+
+                    <i
+                        class="fas fa-network-wired"
+                    ></i>
+
+                    Links
+
+                </button>
+
+
+                <button
+                    id="btnThreats"
+                    class="active"
+                    onclick="toggleLayer('threats')"
+                >
+
+                    <i
+                        class="fas fa-skull-crossbones"
+                    ></i>
+
+                    Threats
+
+                </button>
+
+
+                <button
+                    id="btnHeat"
+                    class="active"
+                    onclick="toggleLayer('heat')"
+                >
+
+                    <i
+                        class="fas fa-fire"
+                    ></i>
+
+                    Heat
+
+                </button>
+
+
+                <button
+                    id="btnRadar"
+                    class="active"
+                    onclick="toggleLayer('radar')"
+                >
+
+                    <i
+                        class="fas fa-broadcast-tower"
+                    ></i>
+
+                    Radar
+
+                </button>
+
+            </div>
+
+
+            <div class="cg">
+
+                <button
+                    id="satToggle"
+                    onclick="toggleSatellite()"
+                >
+
+                    <i
+                        class="fas fa-satellite"
+                    ></i>
+
+                    <span id="satLabel">
+                        Satellite
+                    </span>
+
+                </button>
+
+            </div>
+
+
+            <div class="map-stats">
+
+                <span>
+
+                    <span class="di online"></span>
+
+                    <span id="mapOnlineCount">
+                        0
+                    </span>
+
+                    Online
+
+                </span>
+
+
+                <span>
+
+                    <span class="di warning"></span>
+
+                    <span id="mapWarningCount">
+                        0
+                    </span>
+
+                    Warning
+
+                </span>
+
+
+                <span>
+
+                    <span class="di offline"></span>
+
+                    <span id="mapOfflineCount">
+                        0
+                    </span>
+
+                    Offline
+
+                </span>
+
+
+                <span>
+
+                    <span class="di threat"></span>
+
+                    <span id="mapThreatCountLabel">
+                        0
+                    </span>
+
+                    Inbound Attacks
+
+                </span>
+
+            </div>
+
+        </div>
+
+
+        <!-- =================================================
+             MAP
+        ================================================== -->
+
+        <div class="map-card">
+
+
+            <div class="map-card-header">
+
+                <h3>
+
+                    <i
+                        class="
+                            fas
+                            fa-satellite-dish
+                            text-green
+                        "
+                    ></i>
+
+                    Global Threat Interceptor & Fleet Map
+
+                </h3>
+
+
+                <div class="map-status-pill">
+
+                    <span class="pulse-dot"></span>
+
+                    Live Interception Active
+
+                    &nbsp;·&nbsp;
+
+                    Click any node for asset diagnostics
+
+                </div>
+
+            </div>
+
+
+            <div id="mapWrap">
+
+
+                <div id="worldMap"></div>
+
+
+                <!-- SVG TELEMETRY -->
+
+                <svg
+                    id="svgOverlay"
+                    xmlns="http://www.w3.org/2000/svg"
+                >
+
+                    <g id="gHeat"></g>
+
+                    <g id="gLinks"></g>
+
+                    <g id="gThreats"></g>
+
+                    <g id="gRadar"></g>
+
+                    <g id="gMarkers"></g>
+
+                    <g id="gLabels"></g>
+
+                </svg>
+
+
+                <div id="zoomBadge">
+                    ZOOM: 2.0 | Global
+                </div>
+
+
+            </div>
+
+
+            <!-- LEGEND -->
+
+            <div class="map-legend">
+
+                <span class="legend-item">
+
+                    <span class="ld server"></span>
+
+                    SIEM Server
+
+                </span>
+
+
+                <span class="legend-item">
+
+                    <span class="ld online"></span>
+
+                    Endpoint (Secure)
+
+                </span>
+
+
+                <span class="legend-item">
+
+                    <span class="ld warning"></span>
+
+                    Warning State
+
+                </span>
+
+
+                <span class="legend-item">
+
+                    <span class="ld offline"></span>
+
+                    Offline
+
+                </span>
+
+
+                <span class="legend-item">
+
+                    <span class="ld threat"></span>
+
+                    Threat Actor
+
+                </span>
+
+
+                <span class="legend-item">
+
+                    <span class="ll conn"></span>
+
+                    Encrypted Tunnel
+
+                </span>
+
+
+                <span class="legend-item">
+
+                    <span class="ll atk"></span>
+
+                    Threat Attack Arc
+
+                </span>
+
+
+                <span class="legend-item">
+
+                    <i
+                        class="
+                            fas
+                            fa-broadcast-tower
+                        "
+                        style="color:var(--green)"
+                    ></i>
+
+                    Server Radar Sweep
+
+                </span>
+
+            </div>
+
+        </div>
+
+
+        <!-- =================================================
+             FOOTER
+        ================================================== -->
+
+        <footer class="status-bar">
+
+            <span>
+
+                <i
+                    class="fas fa-check-circle"
+                    style="color:var(--green)"
+                ></i>
+
+                SIEM Telemetry Core:
+                Operational
+
+                ·
+
+                Tailscale VPN Ingestion
+
+            </span>
+
+
+            <span id="statusBarRight">
+
+                Last scan:
+                --:--:--
+
+            </span>
+
+        </footer>
+
+
+    </div>
+
+</main>
+
+
+<!-- =========================================================
+     MAPBOX PUBLIC CONFIGURATION (Loaded safely via config.js / localStorage)
+========================================================== -->
+
+<script src="js/config.js"></script>
+<script>
+    if (!window.MAPBOX_TOKEN) {
+        window.MAPBOX_TOKEN = localStorage.getItem('siem_mapbox_token') || "";
+    }
+</script>
+
+
+<!-- =========================================================
+     MAPBOX GL JS
+========================================================== -->
+
+<script
+    src="https://api.mapbox.com/mapbox-gl-js/v3.30.0/mapbox-gl.js"
+></script>
+
+
+<!-- =========================================================
+     EXISTING SIEM JS
+========================================================== -->
+
+<script src="js/theme.js"></script>
+
+<script src="js/main.js"></script>
+
+<script src="js/map.js"></script>
+
+
+</body>
+
+</html>

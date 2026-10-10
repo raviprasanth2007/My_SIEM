@@ -1,0 +1,562 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>MY SIEM — Managed Endpoints</title>
+
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <link rel="stylesheet" href="css/style.css">
+
+    <style>
+        .device-cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 16px;
+            margin-bottom: 8px;
+        }
+
+        .device-card {
+            padding: 16px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            cursor: pointer;
+            min-width: 0;
+            transition: border-color .2s, transform .2s;
+        }
+
+        .device-card:hover {
+            border-color: var(--green);
+            transform: translateY(-2px);
+        }
+
+        .device-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .device-name {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            overflow-wrap: anywhere;
+        }
+
+        .device-name i {
+            color: var(--green);
+        }
+
+        .device-details {
+            display: grid;
+            gap: 10px;
+            font-size: .78rem;
+            color: var(--text-muted);
+        }
+
+        .device-details span {
+            overflow-wrap: anywhere;
+        }
+
+        .device-details i {
+            width: 16px;
+            margin-right: 5px;
+        }
+
+        .device-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 16px;
+        }
+
+        .device-status {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 8px;
+            border-radius: 20px;
+            font-size: .65rem;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .device-status.online {
+            color: var(--green);
+            background: rgba(0, 220, 160, .12);
+        }
+
+        .device-status.warning {
+            color: var(--orange);
+            background: rgba(255, 165, 0, .12);
+        }
+
+        .device-status.offline {
+            color: var(--red);
+            background: rgba(255, 65, 85, .12);
+        }
+
+        .device-status.unknown {
+            color: var(--text-muted);
+            background: rgba(130, 145, 165, .12);
+        }
+
+        .endpoint-empty {
+            padding: 34px 18px;
+            text-align: center;
+            color: var(--text-muted);
+        }
+
+        .endpoint-empty > i {
+            font-size: 1.8rem;
+            margin-bottom: 12px;
+        }
+
+        .endpoint-empty h3 {
+            margin: 10px 0;
+            color: var(--text-primary);
+        }
+
+        .endpoint-empty p {
+            font-size: .78rem;
+            overflow-wrap: anywhere;
+        }
+
+        .endpoint-api-url {
+            overflow-wrap: anywhere;
+            font-size: .72rem;
+        }
+
+        .endpoint-raw-data {
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+            max-height: 280px;
+            overflow: auto;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+            font-size: .75rem;
+        }
+
+        .endpoint-status-label {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+        }
+
+        .endpoint-live-dot {
+            width: 7px;
+            height: 7px;
+            display: inline-block;
+            border-radius: 50%;
+            background: var(--green);
+        }
+
+        .endpoint-live-dot.error {
+            background: var(--red);
+        }
+
+        .filter-bar input {
+            min-width: 150px;
+        }
+
+        .table-scroll {
+            overflow-x: auto;
+        }
+
+        .table-scroll table {
+            min-width: 850px;
+            width: 100%;
+        }
+
+        #prevPage:disabled,
+        #nextPage:disabled {
+            opacity: .4;
+            cursor: not-allowed;
+        }
+
+        @media (max-width: 700px) {
+            .device-cards-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .main-header {
+                gap: 12px;
+                flex-wrap: wrap;
+            }
+
+            .header-actions {
+                flex-wrap: wrap;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- SIDEBAR -->
+    <nav class="sidebar">
+        <div class="sidebar-logo">
+            <i class="fas fa-shield-halved logo-icon"></i>
+            <div>
+                <h1>MY <span>SIEM</span></h1>
+                <span class="subtitle">Security Operations</span>
+            </div>
+        </div>
+
+        <div class="sidebar-nav">
+            <div class="nav-label">Command Center</div>
+
+            <a href="index.html">
+                <i class="fas fa-th-large"></i>
+                <span>Dashboard</span>
+            </a>
+
+            <a href="alerts.html">
+                <i class="fas fa-bell"></i>
+                <span>Alerts</span>
+                <span class="badge-side" id="alertBadge">0</span>
+            </a>
+
+            <a href="logs.html">
+                <i class="fas fa-file-alt"></i>
+                <span>Log Stream</span>
+            </a>
+
+            <a href="devices.html" class="active">
+                <i class="fas fa-server"></i>
+                <span>Endpoints</span>
+            </a>
+
+            <a href="incidents.html">
+                <i class="fas fa-shield-alt"></i>
+                <span>Incidents</span>
+            </a>
+
+            <div class="nav-label">Intelligence</div>
+
+            <a href="map.html">
+                <i class="fas fa-globe-americas"></i>
+                <span>World Map</span>
+            </a>
+
+            <a href="threat-intel.html">
+                <i class="fas fa-chart-line"></i>
+                <span>Threat Intel</span>
+            </a>
+
+            <div class="nav-label">Administration</div>
+
+            <a href="reports.html">
+                <i class="fas fa-file-pdf"></i>
+                <span>Reports</span>
+            </a>
+
+            <a href="settings.html">
+                <i class="fas fa-cog"></i>
+                <span>Settings</span>
+            </a>
+
+            <a href="users.html">
+                <i class="fas fa-users"></i>
+                <span>Users</span>
+            </a>
+        </div>
+
+        <div class="sidebar-footer">
+            <div class="user">
+                <div class="user-avatar">A</div>
+                <div class="user-info">
+                    <div class="name">SOC Administrator</div>
+                    <div class="role">SecOps Lead · Level 3</div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+
+        <header class="main-header">
+            <div>
+                <h2>
+                    Managed Endpoints
+                    <span>· Fleet Health &amp; Telemetry Agents</span>
+                </h2>
+            </div>
+
+            <div class="header-actions">
+                <div class="live-badge" id="liveBadge"
+                     title="Endpoint API status">
+                    <span class="live-dot-sm" id="endpointLiveDot"></span>
+                    <span id="endpointLiveLabel">CHECKING API</span>
+                </div>
+
+                <button class="header-btn"
+                        type="button"
+                        onclick="document.dispatchEvent(new KeyboardEvent('keydown',{key:'k',ctrlKey:true}))"
+                        title="Search (Ctrl+K)">
+                    <i class="fas fa-search"></i>
+                    <span>Ctrl+K</span>
+                </button>
+
+                <button class="theme-toggle"
+                        type="button"
+                        onclick="toggleTheme()"
+                        id="themeToggle">
+                    <i class="fas fa-moon"></i>
+                    <span class="theme-label" id="themeLabel">Dark</span>
+                </button>
+
+                <button class="btn-refresh"
+                        type="button"
+                        onclick="loadDevices()"
+                        title="Refresh Endpoints">
+                    <i class="fas fa-sync-alt" id="refreshIcon"></i>
+                </button>
+
+                <span style="color:var(--text-muted);font-size:.65rem"
+                      id="lastUpdate">Not updated yet</span>
+            </div>
+        </header>
+
+        <!-- STATISTICS -->
+        <div class="stats-grid">
+
+            <div class="stat-card" onclick="filterByStatus('ALL')">
+                <div class="stat-header">
+                    <span class="stat-label">Total Endpoints</span>
+                    <i class="fas fa-server stat-icon text-blue"></i>
+                </div>
+                <div class="stat-value text-blue" id="deviceTotal">0</div>
+                <div class="stat-footer">
+                    <span class="stat-change up">Fleet Inventory</span>
+                    <span class="stat-delta">All devices</span>
+                </div>
+            </div>
+
+            <div class="stat-card" onclick="filterByStatus('online')">
+                <div class="stat-header">
+                    <span class="stat-label">Online &amp; Healthy</span>
+                    <i class="fas fa-circle-check stat-icon text-green"></i>
+                </div>
+                <div class="stat-value text-green" id="deviceOnline">0</div>
+                <div class="stat-footer">
+                    <span class="stat-change up">
+                        <i class="fas fa-check"></i> Connected
+                    </span>
+                    <span class="stat-delta">Reported status</span>
+                </div>
+            </div>
+
+            <div class="stat-card" onclick="filterByStatus('warning')">
+                <div class="stat-header">
+                    <span class="stat-label">Warning State</span>
+                    <i class="fas fa-triangle-exclamation stat-icon text-yellow"></i>
+                </div>
+                <div class="stat-value text-yellow" id="deviceWarning">0</div>
+                <div class="stat-footer">
+                    <span class="stat-change warning">Needs attention</span>
+                    <span class="stat-delta">Reported warnings</span>
+                </div>
+            </div>
+
+            <div class="stat-card critical" onclick="filterByStatus('offline')">
+                <div class="stat-header">
+                    <span class="stat-label">Offline</span>
+                    <i class="fas fa-plug-circle-xmark stat-icon text-red"></i>
+                </div>
+                <div class="stat-value text-red" id="deviceOffline">0</div>
+                <div class="stat-footer">
+                    <span class="stat-change down">
+                        <i class="fas fa-xmark"></i> Disconnected
+                    </span>
+                    <span class="stat-delta">Reported status</span>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- MONITORED HOST CARDS -->
+        <section class="panel">
+            <div class="panel-header">
+                <h3>
+                    <i class="fas fa-laptop-code text-green"></i>
+                    Monitored Host Cards
+                </h3>
+                <span class="view-all" id="deviceCardCount">0 devices</span>
+            </div>
+
+            <div class="device-cards-grid" id="deviceCardsGrid">
+                <div class="endpoint-empty">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Loading endpoint telemetry...</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ENDPOINT TABLE -->
+        <section class="table-container">
+
+            <div class="filter-bar">
+                <input
+                    type="search"
+                    id="searchInput"
+                    placeholder="Search hostname, IP, agent ID, OS..."
+                    aria-label="Search endpoints"
+                    oninput="searchDevices()">
+
+                <select id="statusFilter"
+                        aria-label="Filter by status"
+                        onchange="searchDevices()">
+                    <option value="ALL">All Status</option>
+                    <option value="online">Online</option>
+                    <option value="warning">Warning</option>
+                    <option value="offline">Offline</option>
+                    <option value="unknown">Unknown</option>
+                </select>
+
+                <select id="osFilter"
+                        aria-label="Filter by operating system"
+                        onchange="searchDevices()">
+                    <option value="ALL">All OS</option>
+                </select>
+
+                <button class="filter-btn clear"
+                        type="button"
+                        onclick="resetFilters()">
+                    <i class="fas fa-times"></i> Clear
+                </button>
+            </div>
+
+            <div class="table-scroll">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Host / Agent ID</th>
+                            <th>IP Address</th>
+                            <th>Operating System</th>
+                            <th>Status</th>
+                            <th>Last Heartbeat</th>
+                            <th>Agent Version</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="devicesBody">
+                        <tr>
+                            <td colspan="7" class="loading-text">
+                                <i class="fas fa-spinner fa-spin text-green"></i>
+                                Loading endpoint telemetry...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="pagination">
+                <span id="pageInfo">Showing 0 devices</span>
+
+                <div class="page-btns">
+                    <button type="button"
+                            id="prevPage"
+                            onclick="changePage(-1)"
+                            disabled>
+                        ◀ Prev
+                    </button>
+
+                    <button type="button"
+                            id="nextPage"
+                            onclick="changePage(1)"
+                            disabled>
+                        Next ▶
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- STATUS FOOTER -->
+        <footer class="status-bar">
+            <span id="statusBarLeft" class="endpoint-status-label">
+                <span class="endpoint-live-dot" id="endpointStatusDot"></span>
+                Checking SIEM API...
+            </span>
+
+            <span id="statusBarRight">Waiting for first API response...</span>
+        </footer>
+
+    </main>
+
+    <!-- DEVICE DETAILS MODAL -->
+    <div id="deviceModal" class="modal-overlay">
+        <div class="modal-container">
+            <div id="modalContent"></div>
+        </div>
+    </div>
+
+    <!-- API CONFIGURATION -->
+    <script>
+        window.SIEM_API_BASE = 'http://100.90.174.77:5000';
+    </script>
+
+    <!-- SHARED SCRIPTS -->
+    <script src="js/theme.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/devices.js"></script>
+
+    <script>
+        /*
+         * Update the header API indicator from the status footer.
+         */
+        const endpointStatusObserver = new MutationObserver(() => {
+            const footerText =
+                document.getElementById('statusBarLeft')?.textContent || '';
+
+            const label =
+                document.getElementById('endpointLiveLabel');
+
+            const dot =
+                document.getElementById('endpointLiveDot');
+
+            const statusDot =
+                document.getElementById('endpointStatusDot');
+
+            const isConnected =
+                footerText.includes('Connected');
+
+            if (label) {
+                label.textContent = isConnected
+                    ? 'LIVE API'
+                    : 'API CHECK';
+            }
+
+            if (dot) {
+                dot.classList.toggle('error', !isConnected);
+            }
+
+            if (statusDot) {
+                statusDot.classList.toggle('error', !isConnected);
+            }
+        });
+
+        const statusElement =
+            document.getElementById('statusBarLeft');
+
+        if (statusElement) {
+            endpointStatusObserver.observe(statusElement, {
+                childList: true,
+                subtree: true,
+                characterData: true
+            });
+        }
+    </script>
+
+</body>
+</html>
